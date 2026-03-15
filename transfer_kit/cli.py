@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import click
+import questionary
 from rich.console import Console
 from rich.table import Table
 
@@ -116,8 +119,10 @@ def export_cmd(ctx: click.Context, output: str, items: str, include_secrets: boo
 @click.option("--merge", "conflict", flag_value="skip", help="Merge: skip existing files.")
 @click.option("--overwrite", "conflict", flag_value="overwrite", help="Overwrite existing files.")
 @click.option("--skip", "conflict", flag_value="skip", default=True, help="Skip existing files (default).")
+@click.option("--compare", "run_compare", is_flag=True, default=False,
+              help="After restoring, compare the extracted bundle with the target and interactively resolve differences.")
 @click.pass_context
-def import_cmd(ctx: click.Context, from_path: str, conflict: str) -> None:
+def import_cmd(ctx: click.Context, from_path: str, conflict: str, run_compare: bool) -> None:
     """Import a transfer-kit bundle into the Claude Code environment."""
     from transfer_kit.core.importer import Importer
     from transfer_kit.platform_utils import get_claude_home
@@ -132,6 +137,137 @@ def import_cmd(ctx: click.Context, from_path: str, conflict: str) -> None:
     target = get_claude_home()
     importer.restore(target, on_conflict=conflict)
     console.print(f"[green]Imported bundle from {from_path}[/green]")
+
+    if run_compare:
+        from transfer_kit.core.comparator import ConfigComparator
+
+        extracted_dir = importer.get_extracted_dir()
+        comp = ConfigComparator(Path(extracted_dir), Path(target))
+        diffs = comp.compare()
+
+        if not diffs:
+            console.print("[green]No differences found after import.[/]")
+            return
+
+        console.print(f"\n[cyan]Found {len(diffs)} difference(s) after import:[/]\n")
+
+        selections = {}
+        for i, diff in enumerate(diffs):
+            _display_diff(diff)
+
+            if not ctx.obj.get("yes"):
+                if diff.item_type == "removed":
+                    console.print("  [dim](informational — no action required)[/]\n")
+                    continue
+
+                action_label = "Add" if diff.item_type == "new" else "Use incoming"
+                choice = questionary.select(
+                    "Action:",
+                    choices=[
+                        questionary.Choice("Keep current", value="keep"),
+                        questionary.Choice(action_label, value="incoming"),
+                        questionary.Choice("Skip", value="skip"),
+                    ] if diff.item_type != "new" else [
+                        questionary.Choice("Add", value="incoming"),
+                        questionary.Choice("Skip", value="skip"),
+                    ],
+                ).ask()
+                selections[i] = choice or "skip"
+            else:
+                selections[i] = "incoming"
+
+        written = comp.apply_selections(diffs, selections)
+        if written:
+            console.print(f"\n[green]Updated {len(written)} file(s) after compare.[/]")
+        else:
+            console.print("\n[yellow]No additional changes applied.[/]")
+
+
+# ---------------------------------------------------------------------------
+# compare
+# ---------------------------------------------------------------------------
+
+
+def _display_diff(diff):
+    """Display a single DiffItem as a side-by-side rich table."""
+    from rich.table import Table
+    from rich.panel import Panel
+
+    title_style = {"new": "green", "modified": "yellow", "removed": "red"}
+    label = diff.item_type.upper()
+    title = f"[{title_style[diff.item_type]}]{label}[/]: {diff.path} :: {diff.section}"
+
+    table = Table(show_header=True, title=title, show_lines=True, expand=True)
+    table.add_column("Current", style="red", ratio=1)
+    table.add_column("Incoming", style="green", ratio=1)
+
+    current_text = diff.current or "(does not exist)"
+    incoming_text = diff.incoming or "(not in incoming)"
+
+    # Truncate long content for display
+    max_lines = 20
+    current_lines = current_text.splitlines()
+    incoming_lines = incoming_text.splitlines()
+    if len(current_lines) > max_lines:
+        current_text = "\n".join(current_lines[:max_lines]) + f"\n... ({len(current_lines) - max_lines} more lines)"
+    if len(incoming_lines) > max_lines:
+        incoming_text = "\n".join(incoming_lines[:max_lines]) + f"\n... ({len(incoming_lines) - max_lines} more lines)"
+
+    table.add_row(current_text, incoming_text)
+    console.print(table)
+
+
+@main.command()
+@click.option("--source", "-s", type=click.Path(exists=True), required=True, help="Source (incoming) directory")
+@click.option("--target", "-t", type=click.Path(exists=True), required=True, help="Target (existing) directory")
+@click.pass_context
+def compare(ctx, source, target):
+    """Compare two config directories and show differences."""
+    from transfer_kit.core.comparator import ConfigComparator
+
+    comp = ConfigComparator(Path(source), Path(target))
+    diffs = comp.compare()
+
+    if not diffs:
+        console.print("[green]No differences found.[/]")
+        return
+
+    console.print(f"[cyan]Found {len(diffs)} difference(s):[/]\n")
+
+    selections = {}
+    for i, diff in enumerate(diffs):
+        _display_diff(diff)
+
+        if not ctx.obj.get("yes"):
+            if diff.item_type == "removed":
+                console.print("  [dim](informational — no action required)[/]\n")
+                continue
+
+            action_label = "Add" if diff.item_type == "new" else "Use incoming"
+            choice = questionary.select(
+                "Action:",
+                choices=[
+                    questionary.Choice("Keep current", value="keep"),
+                    questionary.Choice(action_label, value="incoming"),
+                    questionary.Choice("Skip", value="skip"),
+                ] if diff.item_type != "new" else [
+                    questionary.Choice("Add", value="incoming"),
+                    questionary.Choice("Skip", value="skip"),
+                ],
+            ).ask()
+            selections[i] = choice or "skip"
+        else:
+            selections[i] = "incoming"
+
+    if ctx.obj.get("dry_run"):
+        console.print("[yellow]Dry run — no files written.[/]")
+        return
+
+    written = comp.apply_selections(diffs, selections)
+    if written:
+        console.print(f"\n[green]Updated {len(written)} file(s).[/]")
+    else:
+        console.print("\n[yellow]No changes applied.[/]")
 
 
 # ---------------------------------------------------------------------------

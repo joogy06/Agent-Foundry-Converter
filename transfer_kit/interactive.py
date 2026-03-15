@@ -15,6 +15,7 @@ MENU_CHOICES = [
     "Sync config",
     "Environment variables",
     "Check prerequisites",
+    "Compare — Compare two config directories",
     "Exit",
 ]
 
@@ -64,6 +65,8 @@ def run_interactive(ctx: click.Context) -> None:
             _interactive_env(ctx)
         elif choice == "Check prerequisites":
             ctx.invoke(_get_prereqs_command())
+        elif choice == "Compare — Compare two config directories":
+            _interactive_compare(ctx)
 
 
 def _get_scan_command():
@@ -212,3 +215,15 @@ def _interactive_env(ctx: click.Context) -> None:
             ctx.invoke(env_remove, key=key)
     elif action == "apply":
         ctx.invoke(env_apply)
+
+
+def _interactive_compare(ctx: click.Context) -> None:
+    """Prompt the user for compare options and run the compare."""
+    import questionary
+
+    source = questionary.path("Source (incoming) directory:").ask()
+    target = questionary.path("Target (existing) directory:").ask()
+    if not source or not target:
+        return
+    from transfer_kit.cli import compare
+    ctx.invoke(compare, source=source, target=target)
