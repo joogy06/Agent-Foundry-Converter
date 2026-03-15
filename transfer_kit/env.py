@@ -30,7 +30,8 @@ class EnvManager:
         """Return the full managed block text (including markers)."""
         lines = [_BLOCK_START]
         for key, value in env_vars.items():
-            lines.append(f'export {key}="{value}"')
+            escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+            lines.append(f'export {key}="{escaped}"')
         lines.append(_BLOCK_END)
         return "\n".join(lines) + "\n"
 

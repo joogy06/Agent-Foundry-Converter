@@ -60,6 +60,8 @@ class GeminiConverter(BaseConverter):
         for var in env_vars:
             if var.name.startswith("ANTHROPIC_"):
                 lines.append(f"# {var.name} — not needed for Gemini")
+            elif var.is_secret:
+                lines.append(f"# {var.name}=<set manually>")
             elif var.name.startswith(("GEMINI_", "GOOGLE_")):
                 lines.append(f'export {var.name}="{var.value}"')
             else:

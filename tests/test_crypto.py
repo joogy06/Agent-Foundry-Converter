@@ -1,4 +1,6 @@
 """tests/test_crypto.py"""
+import pytest
+
 from transfer_kit.core.crypto import FernetEncryptor
 
 
@@ -15,11 +17,8 @@ def test_fernet_encrypt_decrypt_roundtrip():
 def test_fernet_wrong_passphrase_fails():
     enc = FernetEncryptor()
     ciphertext = enc.encrypt(b"secret", "correct")
-    try:
+    with pytest.raises(Exception):
         enc.decrypt(ciphertext, "wrong")
-        assert False, "Should have raised"
-    except Exception:
-        pass
 
 
 def test_fernet_different_salt_each_time():

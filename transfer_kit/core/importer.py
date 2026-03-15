@@ -77,6 +77,10 @@ class Importer:
                     if not rel or rel == "manifest.json":
                         continue
 
+                    rel_path = Path(rel)
+                    if ".." in rel_path.parts:
+                        raise ValueError(f"Unsafe path in bundle: {member.name}")
+
                     # Filter by requested items.
                     if items is not None and not self._matches_items(rel, items):
                         continue
@@ -161,15 +165,15 @@ class Importer:
         # Map item names to the archive path prefixes used by Exporter
         category_prefixes = {
             "skills": ("skills/",),
-            "plugins": ("plugins/",),
-            "settings": ("settings/",),
+            "plugins": ("plugins.json",),
+            "settings": ("settings.json", "settings.local.json"),
             "projects": ("projects/",),
-            "mcp": ("mcp/",),
-            "mcp_servers": ("mcp/",),
+            "mcp": ("mcp_servers.json",),
+            "mcp_servers": ("mcp_servers.json",),
             "env": ("env/",),
             "env_vars": ("env/",),
             "plans": ("plans/",),
-            "teams": ("teams/",),
+            "teams": ("teams.json",),
             "keybindings": ("keybindings.json",),
         }
         for item in items:

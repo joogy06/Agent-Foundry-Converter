@@ -61,6 +61,14 @@ def test_cli_sync_exists():
     assert "sync" in result.output.lower()
 
 
+def test_cli_compare_exists():
+    runner = CliRunner()
+    result = runner.invoke(main, ["compare", "--help"])
+    assert result.exit_code == 0
+    assert "--source" in result.output
+    assert "--target" in result.output
+
+
 def test_cli_version():
     runner = CliRunner()
     result = runner.invoke(main, ["--version"])

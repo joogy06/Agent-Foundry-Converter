@@ -8,7 +8,6 @@ from transfer_kit.converters.windsurf import (
     _enforce_char_limit,
 )
 from transfer_kit.models import (
-    ClaudeEnvironment,
     EnvVar,
     McpServer,
     ProjectConfig,
@@ -16,17 +15,7 @@ from transfer_kit.models import (
 )
 
 
-def _empty_env(**overrides):
-    defaults = dict(
-        skills=[], plugins=[], mcp_servers=[], projects=[],
-        global_settings={}, local_settings={},
-        env_vars=[], plans=[], teams=[], keybindings=None,
-    )
-    defaults.update(overrides)
-    return ClaudeEnvironment(**defaults)
-
-
-def test_windsurf_skills_conversion():
+def test_windsurf_skills_conversion(empty_env):
     skill = Skill(
         name="test-skill",
         path=Path("/tmp/test"),
@@ -34,7 +23,7 @@ def test_windsurf_skills_conversion():
         frontmatter={"name": "test"},
         source="custom",
     )
-    conv = WindsurfConverter(_empty_env())
+    conv = WindsurfConverter(empty_env)
     result = conv.convert_skills([skill])
     key = ".windsurf/rules/test-skill.md"
     assert key in result
@@ -44,13 +33,13 @@ def test_windsurf_skills_conversion():
     assert "Glob" not in body.split("---", 2)[-1]
 
 
-def test_windsurf_project_config():
+def test_windsurf_project_config(empty_env):
     config = ProjectConfig(
         project_path="/tmp",
         claude_md="---\ntitle: proj\n---\nUse Write to create files.",
         settings=None,
     )
-    conv = WindsurfConverter(_empty_env())
+    conv = WindsurfConverter(empty_env)
     result = conv.convert_project_config(config)
     key = ".windsurf/rules/project.md"
     assert key in result
@@ -58,20 +47,20 @@ def test_windsurf_project_config():
     assert "create_file" in result[key]
 
 
-def test_windsurf_mcp_servers():
+def test_windsurf_mcp_servers(empty_env):
     srv = McpServer(name="redis", enabled=True, config={"command": "redis-mcp"})
-    conv = WindsurfConverter(_empty_env())
+    conv = WindsurfConverter(empty_env)
     result = conv.convert_mcp_servers([srv])
     data = result["mcp_config.json"]
     assert "redis" in data["mcpServers"]
 
 
-def test_windsurf_env_vars():
+def test_windsurf_env_vars(empty_env):
     vars_ = [
         EnvVar(name="SECRET_KEY", value="xxx", category="other", is_secret=True, source_file=Path("/tmp")),
         EnvVar(name="DEBUG", value="1", category="other", is_secret=False, source_file=Path("/tmp")),
     ]
-    conv = WindsurfConverter(_empty_env())
+    conv = WindsurfConverter(empty_env)
     result = conv.convert_env_vars(vars_)
     assert ".env" in result
     assert "README_env.md" in result

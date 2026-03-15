@@ -196,7 +196,7 @@ class Exporter:
             "settings": "settings",
             "projects": "projects/",
             "mcp": "mcp_servers.json",
-            "env_vars": "env_vars.json",
+            "env_vars": "env/",
             "plans": "plans/",
             "teams": "teams.json",
             "keybindings": "keybindings.json",

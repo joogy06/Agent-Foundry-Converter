@@ -4,7 +4,6 @@ from pathlib import Path
 
 from transfer_kit.converters.copilot import CopilotConverter
 from transfer_kit.models import (
-    ClaudeEnvironment,
     EnvVar,
     McpServer,
     ProjectConfig,
@@ -12,17 +11,7 @@ from transfer_kit.models import (
 )
 
 
-def _empty_env(**overrides):
-    defaults = dict(
-        skills=[], plugins=[], mcp_servers=[], projects=[],
-        global_settings={}, local_settings={},
-        env_vars=[], plans=[], teams=[], keybindings=None,
-    )
-    defaults.update(overrides)
-    return ClaudeEnvironment(**defaults)
-
-
-def test_copilot_skills_conversion():
+def test_copilot_skills_conversion(empty_env):
     skill = Skill(
         name="lint",
         path=Path("/tmp/lint"),
@@ -30,7 +19,7 @@ def test_copilot_skills_conversion():
         frontmatter={"name": "lint", "description": "Run linter"},
         source="custom",
     )
-    conv = CopilotConverter(_empty_env())
+    conv = CopilotConverter(empty_env)
     result = conv.convert_skills([skill])
     key = ".github/instructions/lint.instructions.md"
     assert key in result
@@ -40,21 +29,21 @@ def test_copilot_skills_conversion():
     assert "Grep" not in body.split("---", 2)[-1]  # after frontmatter
 
 
-def test_copilot_project_config():
+def test_copilot_project_config(empty_env):
     config = ProjectConfig(
         project_path="/tmp",
         claude_md="---\ntitle: proj\n---\nUse Edit to modify files.",
         settings=None,
     )
-    conv = CopilotConverter(_empty_env())
+    conv = CopilotConverter(empty_env)
     result = conv.convert_project_config(config)
     assert ".github/copilot-instructions.md" in result
     assert "EditFile" in result[".github/copilot-instructions.md"]
 
 
-def test_copilot_mcp_servers():
+def test_copilot_mcp_servers(empty_env):
     srv = McpServer(name="pg", enabled=True, config={"command": "pg-mcp", "args": ["--db", "test"]})
-    conv = CopilotConverter(_empty_env())
+    conv = CopilotConverter(empty_env)
     result = conv.convert_mcp_servers([srv])
     data = result[".vscode/mcp.json"]
     assert "pg" in data["servers"]

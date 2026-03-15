@@ -395,6 +395,11 @@ def env_set(ctx: click.Context, key_value: str) -> None:
 
     key, _, value = key_value.partition("=")
 
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
+        console.print(f"[red]Invalid variable name: {key!r}[/red]")
+        raise SystemExit(1)
+
     profiles = get_shell_profile_paths()
     if not profiles:
         console.print("[yellow]No shell profiles found.[/yellow]")
@@ -492,13 +497,13 @@ def sync_init(ctx: click.Context, path: str, remote: str | None) -> None:
     """Initialise a sync repository at PATH."""
     from transfer_kit.core.sync import SyncManager
 
-    mgr = SyncManager(path)
+    mgr = SyncManager(Path(path))
 
     if ctx.obj.get("dry_run"):
         console.print(f"[dim]Dry run: would initialise sync repo at {path}[/dim]")
         return
 
-    mgr.init(remote=remote)
+    mgr.init_repo(remote_url=remote)
     console.print(f"[green]Initialised sync repository at {path}[/green]")
 
 
@@ -507,15 +512,40 @@ def sync_init(ctx: click.Context, path: str, remote: str | None) -> None:
 @click.pass_context
 def sync_push(ctx: click.Context, path: str) -> None:
     """Push local config to the sync repository at PATH."""
+    import tempfile
+    import tarfile
     from transfer_kit.core.sync import SyncManager
+    from transfer_kit.core.scanner import Scanner
+    from transfer_kit.core.exporter import Exporter
 
-    mgr = SyncManager(path)
+    mgr = SyncManager(Path(path))
 
     if ctx.obj.get("dry_run"):
         console.print(f"[dim]Dry run: would push to {path}[/dim]")
         return
 
-    mgr.push()
+    # Scan, export to a temp archive, extract, then push the extracted dir.
+    scanner = Scanner()
+    env = scanner.scan()
+    exporter = Exporter(env)
+
+    with tempfile.TemporaryDirectory(prefix="transfer_kit_push_") as tmpdir:
+        archive_path = Path(tmpdir) / "bundle.tar.gz"
+        exporter.export(archive_path)
+
+        extract_dir = Path(tmpdir) / "extracted"
+        extract_dir.mkdir()
+        with tarfile.open(archive_path, "r:gz") as tar:
+            tar.extractall(extract_dir)
+
+        # The exporter writes files under "transfer_kit_bundle/" prefix
+        bundle_dir = extract_dir / "transfer_kit_bundle"
+        if not bundle_dir.is_dir():
+            # Fallback: use extract_dir directly if no prefix subdir
+            bundle_dir = extract_dir
+
+        mgr.push(bundle_dir=bundle_dir)
+
     console.print(f"[green]Pushed config to {path}[/green]")
 
 
@@ -526,7 +556,7 @@ def sync_pull(ctx: click.Context, path: str) -> None:
     """Pull config from the sync repository at PATH."""
     from transfer_kit.core.sync import SyncManager
 
-    mgr = SyncManager(path)
+    mgr = SyncManager(Path(path))
 
     if ctx.obj.get("dry_run"):
         console.print(f"[dim]Dry run: would pull from {path}[/dim]")
@@ -552,11 +582,11 @@ def sync_copy(ctx: click.Context, to_path: str | None, from_path: str | None,
         raise click.UsageError("At least one of --to or --from is required.")
 
     path = from_path or to_path
-    mgr = SyncManager(path)
+    mgr = SyncManager(Path(path))
 
     if ctx.obj.get("dry_run"):
         console.print(f"[dim]Dry run: would copy from={from_path} to={to_path}[/dim]")
         return
 
-    mgr.copy(to_path=to_path, from_path=from_path, execute=execute, on_conflict=on_conflict)
+    mgr.copy_to(dest=Path(to_path), execute=execute, on_conflict=on_conflict)
     console.print("[green]Copy complete.[/green]")
