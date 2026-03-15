@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "plugins": {
+    "test-plugin@test-marketplace": [
+      {
+        "scope": "user",
+        "installPath": "/tmp/test",
+        "version": "1.0.0",
+        "installedAt": "2026-01-01T00:00:00Z"
+      }
+    ]
+  }
+}

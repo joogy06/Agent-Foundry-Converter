@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transfer-kit"
+version = "0.1.0"
+description = "Migrate Claude Code config and convert to other IDEs"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1",
+    "questionary>=2.0",
+    "rich>=13.0",
+    "gitpython>=3.1",
+    "pyyaml>=6.0",
+    "cryptography>=41.0",
+]
+
+[project.scripts]
+transfer-kit = "transfer_kit.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-tmp-files>=0.0.2"]
