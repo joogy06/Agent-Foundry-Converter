@@ -10,6 +10,7 @@
 - `981edbd` Add compare & merge feature design spec
 - `ac3a125` feat: add compare & merge with per-section interactive selection
 - `245c571` fix: address QA review — security, correctness, and test improvements
+- `c58cb39` docs: add README, project history, and file index
 
 Key milestones:
 - Design spec written and reviewed
@@ -18,5 +19,6 @@ Key milestones:
 - Converters: Gemini CLI, GitHub Copilot, Windsurf
 - CLI: Click subcommands + questionary interactive mode
 - Compare & merge feature with per-section diffing
-- QA review: security fixes, test improvements
+- QA review: 5 critical fixes (path traversal, secret leakage, sync CLI, manifest alignment)
+- Project documentation: README, history, file index
 - 108 tests passing

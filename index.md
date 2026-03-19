@@ -49,6 +49,16 @@
 | `test_scanner.py` | Tests for config discovery |
 | `test_sync.py` | Tests for git repo + file sync |
 
+## Project Root
+
+| File | Purpose |
+|------|---------|
+| `README.md` | Installation, usage, commands reference |
+| `history.md` | Project timeline and milestones |
+| `index.md` | This file — module/file index |
+| `pyproject.toml` | Package config, dependencies, entry point |
+| `.gitignore` | Git ignore rules |
+
 ## Docs (`docs/`)
 
 | File | Purpose |
