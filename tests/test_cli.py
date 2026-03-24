@@ -160,3 +160,44 @@ def test_env_show_masks_secrets(tmp_path):
     assert "sk-ant-secret-12345" not in result.output
     assert "****" in result.output
     assert "hello" in result.output
+
+
+FIXTURES = Path(__file__).parent / "fixtures" / "claude_home"
+
+
+def test_cli_scan_runs(monkeypatch):
+    """scan command should complete without error."""
+    monkeypatch.setattr("transfer_kit.platform_utils.get_claude_home", lambda: FIXTURES)
+    monkeypatch.setattr("transfer_kit.core.scanner.get_claude_home", lambda: FIXTURES)
+    monkeypatch.setattr("transfer_kit.core.scanner.get_shell_profile_paths", lambda: [])
+    runner = CliRunner()
+    result = runner.invoke(main, ["scan"],
+        obj={"verbose": False, "quiet": False, "yes": False,
+             "dry_run": False, "no_color": True})
+    assert result.exit_code == 0, f"Failed: {result.output}\n{result.exception}"
+
+
+def test_cli_export_dry_run(tmp_path, monkeypatch):
+    """export --dry-run should not create files."""
+    monkeypatch.setattr("transfer_kit.platform_utils.get_claude_home", lambda: FIXTURES)
+    monkeypatch.setattr("transfer_kit.core.scanner.get_claude_home", lambda: FIXTURES)
+    monkeypatch.setattr("transfer_kit.core.scanner.get_shell_profile_paths", lambda: [])
+    output = tmp_path / "bundle.tar.gz"
+    runner = CliRunner()
+    result = runner.invoke(main, ["--dry-run", "export", "-o", str(output)],
+        obj={"verbose": False, "quiet": False, "yes": False,
+             "dry_run": True, "no_color": True})
+    assert result.exit_code == 0
+    assert not output.exists()
+
+
+def test_cli_convert_dry_run(tmp_path, monkeypatch):
+    """convert --dry-run should not create files."""
+    monkeypatch.setattr("transfer_kit.platform_utils.get_claude_home", lambda: FIXTURES)
+    monkeypatch.setattr("transfer_kit.core.scanner.get_claude_home", lambda: FIXTURES)
+    monkeypatch.setattr("transfer_kit.core.scanner.get_shell_profile_paths", lambda: [])
+    runner = CliRunner()
+    result = runner.invoke(main, ["--dry-run", "convert", "--target", "gemini", "-o", str(tmp_path / "out")],
+        obj={"verbose": False, "quiet": False, "yes": False,
+             "dry_run": True, "no_color": True})
+    assert result.exit_code == 0
