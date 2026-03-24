@@ -30,15 +30,27 @@ def get_windsurf_config_dir() -> Path:
     return Path.home() / ".codeium" / "windsurf"
 
 
+def get_shell_type() -> str:
+    """Return 'bash', 'zsh', 'fish', or 'powershell'."""
+    if get_os() == "windows":
+        return "powershell"
+    shell = os.environ.get("SHELL", "/bin/bash")
+    if "zsh" in shell:
+        return "zsh"
+    if "fish" in shell:
+        return "fish"
+    return "bash"
+
+
 def get_shell_profile_paths() -> list[Path]:
     """Return list of shell profile files that exist on this system."""
     home = Path.home()
     candidates: list[Path] = []
 
     if get_os() == "windows":
-        ps_profile = home / "Documents" / "PowerShell" / "profile.ps1"
-        wps_profile = home / "Documents" / "WindowsPowerShell" / "Microsoft.PowerShell_profile.ps1"
-        candidates = [ps_profile, wps_profile]
+        ps7 = home / "Documents" / "PowerShell" / "Microsoft.PowerShell_profile.ps1"
+        ps5 = home / "Documents" / "WindowsPowerShell" / "Microsoft.PowerShell_profile.ps1"
+        candidates = [ps7, ps5]
     else:
         shell = os.environ.get("SHELL", "/bin/bash")
         if "zsh" in shell:

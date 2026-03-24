@@ -37,6 +37,18 @@ def test_get_shell_profile_paths():
         assert len(paths) >= 1
 
 
+def test_get_shell_type_linux(monkeypatch):
+    monkeypatch.setattr("transfer_kit.platform_utils.get_os", lambda: "linux")
+    monkeypatch.setenv("SHELL", "/bin/zsh")
+    from transfer_kit.platform_utils import get_shell_type
+    assert get_shell_type() == "zsh"
+
+def test_get_shell_type_windows(monkeypatch):
+    monkeypatch.setattr("transfer_kit.platform_utils.get_os", lambda: "windows")
+    from transfer_kit.platform_utils import get_shell_type
+    assert get_shell_type() == "powershell"
+
+
 def test_detect_package_manager():
     result = detect_package_manager()
     assert result is None or isinstance(result, str)
