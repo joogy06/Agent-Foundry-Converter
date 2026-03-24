@@ -373,13 +373,19 @@ def env_show(ctx: click.Context) -> None:
         console.print("[yellow]No shell profiles found.[/yellow]")
         return
 
+    from transfer_kit.core.scanner import Scanner
+
     for profile in profiles:
         mgr = EnvManager(profile)
         managed = mgr.get_managed_vars()
         if managed:
             console.print(f"\n[bold]{profile}[/bold]")
             for key, value in managed.items():
-                console.print(f"  {key}={value}")
+                if Scanner._is_secret(key):
+                    display = value[:4] + "****" if len(value) > 4 else "****"
+                else:
+                    display = value
+                console.print(f"  {key}={display}")
         else:
             console.print(f"\n[dim]{profile}: no managed variables[/dim]")
 

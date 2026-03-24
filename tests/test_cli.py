@@ -138,3 +138,25 @@ def test_sync_copy_requires_to_for_execute(tmp_path):
             "quiet": False, "no_color": False})
     assert result.exit_code != 0
     assert "TypeError" not in (result.output or "")
+
+
+def test_env_show_masks_secrets(tmp_path):
+    """env show should not display full secret values."""
+    profile = tmp_path / ".bashrc"
+    profile.write_text(
+        '# -- transfer_kit managed start --\n'
+        'export ANTHROPIC_API_KEY="sk-ant-secret-12345"\n'
+        'export MY_SAFE_VAR="hello"\n'
+        '# -- transfer_kit managed end --\n'
+    )
+
+    from unittest.mock import patch
+    with patch("transfer_kit.platform_utils.get_shell_profile_paths", return_value=[profile]):
+        runner = CliRunner()
+        result = runner.invoke(main, ["env", "show"],
+            obj={"dry_run": False, "yes": False, "verbose": False,
+                 "quiet": False, "no_color": True})
+
+    assert "sk-ant-secret-12345" not in result.output
+    assert "****" in result.output
+    assert "hello" in result.output
