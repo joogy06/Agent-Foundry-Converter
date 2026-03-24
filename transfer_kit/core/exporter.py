@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import hashlib
 import io
 import json
@@ -73,7 +74,7 @@ class Exporter:
             items = [self._ITEM_ALIASES.get(i, i) for i in items]
         staged: dict[str, bytes] = {}
 
-        stagers: dict[str, callable] = {
+        stagers: dict[str, Callable] = {
             "skills": self._stage_skills,
             "plugins": self._stage_plugins,
             "settings": self._stage_settings,
@@ -187,7 +188,7 @@ class Exporter:
             "value": value,
             "category": var.category,
             "is_secret": var.is_secret,
-            "source_file": str(var.source_file),
+            "source_file": var.source_file.name,
         }
 
     # ------------------------------------------------------------------
@@ -221,7 +222,6 @@ class Exporter:
             "created_at": datetime.now(timezone.utc).isoformat(),
             "transfer_kit_version": transfer_kit.__version__,
             "source_platform": platform.system().lower(),
-            "source_hostname": platform.node(),
             "items": items_present,
             "checksums": checksums,
         }

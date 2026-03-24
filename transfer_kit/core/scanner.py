@@ -302,12 +302,17 @@ class Scanner:
     @staticmethod
     def _parse_frontmatter(text: str) -> dict:
         """Extract YAML frontmatter from a markdown string."""
-        if not text.startswith("---"):
+        lines = text.splitlines(keepends=True)
+        if not lines or lines[0].strip() != "---":
             return {}
-        end = text.find("---", 3)
-        if end == -1:
+        end_idx = None
+        for i, line in enumerate(lines[1:], start=1):
+            if line.strip() == "---":
+                end_idx = i
+                break
+        if end_idx is None:
             return {}
-        raw = text[3:end]
+        raw = "".join(lines[1:end_idx])
         try:
             data = yaml.safe_load(raw)
             return data if isinstance(data, dict) else {}

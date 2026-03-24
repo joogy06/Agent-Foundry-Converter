@@ -33,7 +33,8 @@ def main(ctx: click.Context, verbose: bool, quiet: bool, yes: bool, dry_run: boo
     ctx.obj["no_color"] = no_color
 
     if no_color:
-        console.no_color = True
+        import os
+        os.environ["NO_COLOR"] = "1"
 
     if ctx.invoked_subcommand is None:
         # Launch interactive mode when no subcommand is given.
