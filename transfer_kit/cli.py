@@ -538,12 +538,22 @@ def sync_push(ctx: click.Context, path: str) -> None:
         extract_dir = Path(tmpdir) / "extracted"
         extract_dir.mkdir()
         with tarfile.open(archive_path, "r:gz") as tar:
-            tar.extractall(extract_dir)
+            for member in tar.getmembers():
+                member_path = Path(member.name)
+                if member_path.is_absolute() or ".." in member_path.parts:
+                    continue
+                if member.issym() or member.islnk():
+                    continue
+                f = tar.extractfile(member)
+                if f is None:
+                    continue
+                dest = extract_dir / member.name
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(f.read())
 
         # The exporter writes files under "transfer_kit_bundle/" prefix
         bundle_dir = extract_dir / "transfer_kit_bundle"
         if not bundle_dir.is_dir():
-            # Fallback: use extract_dir directly if no prefix subdir
             bundle_dir = extract_dir
 
         mgr.push(bundle_dir=bundle_dir)

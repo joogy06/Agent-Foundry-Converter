@@ -100,3 +100,30 @@ def test_cli_import_compare_does_not_crash(tmp_path, monkeypatch):
     ], obj={"dry_run": False, "yes": True, "verbose": False,
             "quiet": False, "no_color": False})
     assert result.exit_code == 0, f"Crashed: {result.output}\n{result.exception}"
+
+
+def test_sync_push_does_not_use_extractall(tmp_path, monkeypatch):
+    """sync push must use safe member-by-member extraction, not extractall."""
+    import tarfile
+
+    def blocked_extractall(self, *args, **kwargs):
+        raise AssertionError("extractall() must not be called — use safe extraction")
+
+    monkeypatch.setattr(tarfile.TarFile, "extractall", blocked_extractall)
+
+    fixtures = Path(__file__).parent / "fixtures" / "claude_home"
+    from transfer_kit.core.scanner import Scanner
+    from transfer_kit.core.exporter import Exporter
+    scanner = Scanner(claude_home=fixtures, shell_profiles=[])
+    env = scanner.scan()
+
+    from transfer_kit.core.sync import SyncManager
+    repo = tmp_path / "repo"
+    mgr = SyncManager(repo)
+    mgr.init_repo()
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["sync", "push", str(repo)],
+        obj={"dry_run": False, "yes": False, "verbose": False,
+             "quiet": False, "no_color": True})
+    assert "extractall() must not be called" not in str(result.exception or "")
