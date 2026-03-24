@@ -8,4 +8,5 @@ def empty_env():
         skills=[], plugins=[], mcp_servers=[], projects=[],
         global_settings={}, local_settings={},
         env_vars=[], plans=[], teams=[], keybindings=None,
+        hooks=None, permissions=None,
     )

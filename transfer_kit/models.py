@@ -73,3 +73,5 @@ class ClaudeEnvironment:
     plans: list[Plan]
     teams: list[TeamConfig]
     keybindings: dict | None
+    hooks: dict | None = None
+    permissions: dict | None = None

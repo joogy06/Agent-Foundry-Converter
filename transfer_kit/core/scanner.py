@@ -68,17 +68,21 @@ class Scanner:
 
     def scan(self) -> ClaudeEnvironment:
         """Execute a full scan and return a populated ClaudeEnvironment."""
+        global_settings = self._read_json(self.claude_home / "settings.json")
+        local_settings = self._read_json(self.claude_home / "settings.local.json")
         return ClaudeEnvironment(
             skills=self._scan_skills(),
             plugins=self._scan_plugins(),
             mcp_servers=self._scan_mcp_servers(),
             projects=self._scan_projects(),
-            global_settings=self._read_json(self.claude_home / "settings.json"),
-            local_settings=self._read_json(self.claude_home / "settings.local.json"),
+            global_settings=global_settings,
+            local_settings=local_settings,
             env_vars=self._scan_env_vars(),
             plans=self._scan_plans(),
             teams=self._scan_teams(),
             keybindings=self._read_json_or_none(self.claude_home / "keybindings.json"),
+            hooks=global_settings.get("hooks") or local_settings.get("hooks"),
+            permissions=local_settings.get("permissions"),
         )
 
     # ------------------------------------------------------------------
