@@ -26,18 +26,22 @@ class EnvManager:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def render_block(env_vars: dict[str, str]) -> str:
+    def render_block(env_vars: dict[str, str], shell: str = "bash") -> str:
         """Return the full managed block text (including markers)."""
         lines = [_BLOCK_START]
         for key, value in env_vars.items():
-            escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
-            lines.append(f'export {key}="{escaped}"')
+            if shell == "powershell":
+                escaped = value.replace("'", "''")
+                lines.append(f"$env:{key} = '{escaped}'")
+            else:
+                escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+                lines.append(f'export {key}="{escaped}"')
         lines.append(_BLOCK_END)
         return "\n".join(lines) + "\n"
 
     def _read(self) -> str:
         if self.profile_path.exists():
-            return self.profile_path.read_text()
+            return self.profile_path.read_text(encoding="utf-8")
         return ""
 
     def _backup(self) -> Path:
@@ -65,9 +69,24 @@ class EnvManager:
             line = line.strip()
             if line.startswith("export "):
                 rest = line[len("export "):]
-                key, _, value = rest.partition("=")
-                # Strip surrounding quotes
-                value = value.strip('"').strip("'")
+                key, _, raw = rest.partition("=")
+                if (raw.startswith('"') and raw.endswith('"')) or \
+                   (raw.startswith("'") and raw.endswith("'")):
+                    value = raw[1:-1]
+                else:
+                    value = raw
+                # Unescape bash sequences
+                value = value.replace("\\$", "$").replace("\\`", "`").replace('\\"', '"').replace("\\\\", "\\")
+                result[key] = value
+            elif line.startswith("$env:"):
+                rest = line[len("$env:"):]
+                key, _, raw = rest.partition(" = ")
+                if not key:
+                    key, _, raw = rest.partition("=")
+                if raw.startswith("'") and raw.endswith("'"):
+                    value = raw[1:-1].replace("''", "'")
+                else:
+                    value = raw
                 result[key] = value
         return result
 
@@ -77,7 +96,8 @@ class EnvManager:
         If the profile does not exist it will be created (no backup in that
         case, since there is nothing to back up).
         """
-        block = self.render_block(env_vars)
+        from transfer_kit.platform_utils import get_shell_type
+        block = self.render_block(env_vars, shell=get_shell_type())
         text = self._read()
 
         if self.profile_path.exists():
@@ -91,7 +111,7 @@ class EnvManager:
             text += block
 
         self.profile_path.parent.mkdir(parents=True, exist_ok=True)
-        self.profile_path.write_text(text)
+        self.profile_path.write_text(text, encoding="utf-8")
 
     def remove_block(self) -> None:
         """Remove the managed block from the profile (creates backup first)."""
@@ -101,4 +121,4 @@ class EnvManager:
 
         self._backup()
         text = _BLOCK_RE.sub("", text)
-        self.profile_path.write_text(text)
+        self.profile_path.write_text(text, encoding="utf-8")

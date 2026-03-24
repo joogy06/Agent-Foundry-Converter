@@ -48,6 +48,22 @@ def test_remove_block(tmp_path):
     assert "# keep me" in text
 
 
+def test_render_block_powershell():
+    block = EnvManager.render_block({"MY_KEY": "hello"}, shell="powershell")
+    assert "$env:MY_KEY = 'hello'" in block
+    assert "export" not in block
+
+
+def test_round_trip_preserves_special_chars(tmp_path):
+    profile = tmp_path / ".bashrc"
+    profile.write_text("", encoding="utf-8")
+    mgr = EnvManager(profile)
+    original = {"TEST_VAR": 'has$dollar"and`backtick'}
+    mgr.apply(original)
+    result = mgr.get_managed_vars()
+    assert result["TEST_VAR"] == original["TEST_VAR"]
+
+
 def test_backup_is_created(tmp_path):
     profile = tmp_path / ".bashrc"
     profile.write_text("original\n")
