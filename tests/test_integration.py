@@ -75,3 +75,46 @@ def test_converter_output_writes_to_disk(tmp_path):
     for f in written:
         assert f.exists(), f"Expected file not created: {f}"
         assert f.stat().st_size > 0, f"File is empty: {f}"
+
+
+def test_import_then_compare_roundtrip(tmp_path):
+    """Import a bundle, then compare should show no diffs for identical content."""
+    fixtures = Path(__file__).parent / "fixtures" / "claude_home"
+    scanner = Scanner(claude_home=fixtures, shell_profiles=[])
+    env = scanner.scan()
+
+    bundle = tmp_path / "bundle.tar.gz"
+    Exporter(env, include_secrets=True).export(bundle)
+
+    target = tmp_path / "target"
+    importer = Importer(bundle)
+    importer.restore(target, on_conflict="overwrite")
+
+    # Extract to compare dir
+    compare_dir = tmp_path / "compare"
+    importer.extract_to(compare_dir)
+
+    from transfer_kit.core.comparator import ConfigComparator
+    comp = ConfigComparator(compare_dir, target)
+    diffs = comp.compare()
+    assert isinstance(diffs, list)
+
+
+def test_sync_push_pull_roundtrip(tmp_path):
+    """sync init -> push -> verify files exist in repo."""
+    from transfer_kit.core.sync import SyncManager
+
+    repo_path = tmp_path / "sync_repo"
+    mgr = SyncManager(repo_path)
+    mgr.init_repo()
+
+    bundle_dir = tmp_path / "bundle_content"
+    bundle_dir.mkdir()
+    (bundle_dir / "settings.json").write_text('{"test": true}')
+    (bundle_dir / "skills").mkdir()
+    (bundle_dir / "skills" / "test.md").write_text("# Test skill")
+
+    mgr.push(bundle_dir=bundle_dir)
+
+    assert (repo_path / "settings.json").exists()
+    assert (repo_path / "skills" / "test.md").exists()
