@@ -22,11 +22,12 @@ def test_gemini_skills_conversion(empty_env):
     empty_env.skills = [skill]
     conv = GeminiConverter(empty_env)
     result = conv.convert_skills([skill])
-    # Current output path (will change in Task 7):
-    assert "gemini-skills/deploy.md" in result
-    body = result["gemini-skills/deploy.md"]
+    assert ".gemini/skills/deploy/SKILL.md" in result
+    body = result[".gemini/skills/deploy/SKILL.md"]
     assert "`read_file`" in body
-    assert "GEMINI-skills-index.md" in result
+    # No legacy paths or index
+    assert not any(k.startswith("gemini-skills/") for k in result)
+    assert not any("index" in k.lower() for k in result)
 
 
 def test_gemini_project_config(empty_env):
@@ -45,8 +46,8 @@ def test_gemini_mcp_servers(empty_env):
     srv = McpServer(name="sqlite", enabled=True, config={"command": "sqlite-mcp"})
     conv = GeminiConverter(empty_env)
     result = conv.convert_mcp_servers([srv])
-    assert "gemini-settings.json" in result
-    data = result["gemini-settings.json"]
+    assert ".gemini/settings.json" in result
+    data = result[".gemini/settings.json"]
     assert "sqlite" in data["mcpServers"]
 
 
