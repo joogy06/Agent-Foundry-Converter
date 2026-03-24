@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from transfer_kit.converters.base import (
@@ -10,7 +9,7 @@ from transfer_kit.converters.base import (
     rewrite_tool_references,
     strip_frontmatter,
 )
-from transfer_kit.models import EnvVar, McpServer, ProjectConfig, Skill
+from transfer_kit.models import ClaudeEnvironment, EnvVar, McpServer, ProjectConfig, Skill
 
 
 class CopilotConverter(BaseConverter):
@@ -50,11 +49,26 @@ class CopilotConverter(BaseConverter):
         if not servers:
             return {}
         server_entries: dict[str, Any] = {}
+        inputs: list[dict[str, Any]] = []
+
         for srv in servers:
             entry = dict(srv.config)
-            entry.setdefault("type", "stdio")
+            if "url" in entry or "httpUrl" in entry:
+                entry.setdefault("type", "sse")
+            else:
+                entry.setdefault("type", "stdio")
             server_entries[srv.name] = entry
-        return {".vscode/mcp.json": {"servers": server_entries}}
+
+        for var in self.env.env_vars:
+            if var.is_secret:
+                inputs.append({
+                    "type": "promptString",
+                    "id": var.name.lower().replace("_", "-"),
+                    "description": f"{var.name} (secret)",
+                    "password": True,
+                })
+
+        return {".vscode/mcp.json": {"inputs": inputs, "servers": server_entries}}
 
     # -- env vars -----------------------------------------------------------
 
@@ -68,3 +82,24 @@ class CopilotConverter(BaseConverter):
             else:
                 lines.append(f"{var.name}={var.value}")
         return {".env": "\n".join(lines) + "\n"}
+
+    # -- orchestration (multi-project merge) --------------------------------
+
+    def convert_all(self, items: ClaudeEnvironment | None = None) -> dict[str, Any]:
+        env = items or self.env
+        results: dict[str, Any] = {}
+        results.update(self.convert_skills(env.skills))
+
+        # Merge multiple project configs into one file
+        project_parts: list[str] = []
+        for proj in env.projects:
+            proj_result = self.convert_project_config(proj)
+            if proj_result:
+                for key, val in proj_result.items():
+                    project_parts.append(val)
+        if project_parts:
+            results[".github/copilot-instructions.md"] = "\n\n---\n\n".join(project_parts)
+
+        results.update(self.convert_mcp_servers(env.mcp_servers))
+        results.update(self.convert_env_vars(env.env_vars))
+        return results

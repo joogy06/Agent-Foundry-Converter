@@ -47,3 +47,29 @@ def test_copilot_mcp_servers(empty_env):
     data = result[".vscode/mcp.json"]
     assert "pg" in data["servers"]
     assert data["servers"]["pg"]["type"] == "stdio"
+
+
+def test_copilot_mcp_has_inputs_for_secrets(empty_env):
+    from transfer_kit.models import EnvVar
+    empty_env.mcp_servers = [McpServer(name="test-mcp", enabled=True,
+                                        config={"command": "node", "args": ["server.js"]})]
+    empty_env.env_vars = [EnvVar(name="TEST_API_KEY", value="secret", category="ai_cli",
+                                  is_secret=True, source_file=Path("/fake"))]
+    conv = CopilotConverter(empty_env)
+    results = conv.convert_all()
+    mcp_data = results.get(".vscode/mcp.json", {})
+    assert "inputs" in mcp_data
+    assert "servers" in mcp_data
+    assert len(mcp_data["inputs"]) >= 1
+
+
+def test_copilot_multi_project_no_overwrite(empty_env):
+    empty_env.projects = [
+        ProjectConfig(project_path="proj-a", claude_md="# Project A", settings=None),
+        ProjectConfig(project_path="proj-b", claude_md="# Project B", settings=None),
+    ]
+    conv = CopilotConverter(empty_env)
+    results = conv.convert_all()
+    copilot_instructions = results.get(".github/copilot-instructions.md", "")
+    assert "Project A" in copilot_instructions
+    assert "Project B" in copilot_instructions
