@@ -47,12 +47,23 @@ class GpgEncryptor:
     """GPG-based encryption (alternative to Fernet)."""
 
     @staticmethod
-    def available() -> bool:
-        return shutil.which("gpg") is not None
+    def _gpg_binary() -> str | None:
+        """Return the name of an available GPG binary, or None."""
+        for candidate in ("gpg", "gpg2"):
+            if shutil.which(candidate):
+                return candidate
+        return None
 
-    @staticmethod
-    def encrypt(data: bytes, recipient: str | None = None) -> bytes:
-        cmd = ["gpg", "--encrypt", "--armor"]
+    @classmethod
+    def available(cls) -> bool:
+        return cls._gpg_binary() is not None
+
+    @classmethod
+    def encrypt(cls, data: bytes, recipient: str | None = None) -> bytes:
+        binary = cls._gpg_binary()
+        if binary is None:
+            raise RuntimeError("No GPG binary found (tried gpg, gpg2)")
+        cmd = [binary, "--encrypt", "--armor"]
         if recipient:
             cmd.extend(["--recipient", recipient])
         else:
@@ -62,10 +73,13 @@ class GpgEncryptor:
             raise RuntimeError(f"GPG encrypt failed: {result.stderr.decode()}")
         return result.stdout
 
-    @staticmethod
-    def decrypt(data: bytes) -> bytes:
+    @classmethod
+    def decrypt(cls, data: bytes) -> bytes:
+        binary = cls._gpg_binary()
+        if binary is None:
+            raise RuntimeError("No GPG binary found (tried gpg, gpg2)")
         result = subprocess.run(
-            ["gpg", "--decrypt"], input=data, capture_output=True, timeout=30,
+            [binary, "--decrypt"], input=data, capture_output=True, timeout=30,
         )
         if result.returncode != 0:
             raise RuntimeError(f"GPG decrypt failed: {result.stderr.decode()}")

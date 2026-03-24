@@ -6,7 +6,7 @@ import json
 import re
 import shutil
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -81,7 +81,7 @@ class ConfigComparator:
             by_file.setdefault(diff.path, []).append((idx, diff))
 
         written: list[Path] = []
-        ts = datetime.now().strftime("%Y%m%d%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%f")
 
         for rel_path, items in by_file.items():
             target_file = self.target_dir / rel_path
@@ -376,7 +376,7 @@ class ConfigComparator:
         files = set()
         for f in directory.rglob("*"):
             if f.is_file():
-                rel = str(f.relative_to(directory))
+                rel = f.relative_to(directory).as_posix()
                 # Skip backup dirs, .git, __pycache__
                 if any(part.startswith(".") or part == "__pycache__" or part == "backups"
                        for part in f.relative_to(directory).parts):

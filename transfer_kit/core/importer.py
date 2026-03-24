@@ -63,7 +63,7 @@ class Importer:
         manifest = self.read_manifest()
         checksums: dict[str, str] = manifest.get("checksums", {})
 
-        tmpdir = Path(tempfile.mkdtemp(prefix="transfer_kit_restore_"))
+        tmpdir = Path(tempfile.mkdtemp(prefix="transfer_kit_restore_", dir=str(target_dir.parent)))
         backups: list[tuple[Path, Path]] = []  # (original, backup)
         written: list[Path] = []
 
@@ -204,7 +204,7 @@ class Importer:
     @staticmethod
     def _backup_file(file_path: Path, target_dir: Path) -> Path:
         """Create a backup of *file_path* under ``target_dir/backups/import_<ts>/``."""
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%f")
         backup_dir = target_dir / "backups" / f"import_{ts}"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
