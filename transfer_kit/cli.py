@@ -593,6 +593,9 @@ def sync_copy(ctx: click.Context, to_path: str | None, from_path: str | None,
     if not to_path and not from_path:
         raise click.UsageError("At least one of --to or --from is required.")
 
+    if execute and not to_path:
+        raise click.UsageError("--to is required when --execute is set.")
+
     path = from_path or to_path
     mgr = SyncManager(Path(path))
 

@@ -127,3 +127,14 @@ def test_sync_push_does_not_use_extractall(tmp_path, monkeypatch):
         obj={"dry_run": False, "yes": False, "verbose": False,
              "quiet": False, "no_color": True})
     assert "extractall() must not be called" not in str(result.exception or "")
+
+
+def test_sync_copy_requires_to_for_execute(tmp_path):
+    """sync copy --from X --execute without --to should give a usage error, not crash."""
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "sync", "copy", "--from", str(tmp_path), "--execute",
+    ], obj={"dry_run": False, "yes": False, "verbose": False,
+            "quiet": False, "no_color": False})
+    assert result.exit_code != 0
+    assert "TypeError" not in (result.output or "")
