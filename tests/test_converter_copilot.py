@@ -15,7 +15,7 @@ def test_copilot_skills_conversion(empty_env):
     skill = Skill(
         name="lint",
         path=Path("/tmp/lint"),
-        content="---\nname: lint\ndescription: Run linter\n---\nUse Grep to search.",
+        content="---\nname: lint\ndescription: Run linter\n---\nUse the `Grep` tool to search.",
         frontmatter={"name": "lint", "description": "Run linter"},
         source="custom",
     )
@@ -25,20 +25,19 @@ def test_copilot_skills_conversion(empty_env):
     assert key in result
     body = result[key]
     assert "applyTo: '**'" in body
-    assert "Search" in body
-    assert "Grep" not in body.split("---", 2)[-1]  # after frontmatter
+    assert "`textSearch`" in body
 
 
 def test_copilot_project_config(empty_env):
     config = ProjectConfig(
         project_path="/tmp",
-        claude_md="---\ntitle: proj\n---\nUse Edit to modify files.",
+        claude_md="---\ntitle: proj\n---\nUse the `Edit` tool to modify files.",
         settings=None,
     )
     conv = CopilotConverter(empty_env)
     result = conv.convert_project_config(config)
     assert ".github/copilot-instructions.md" in result
-    assert "EditFile" in result[".github/copilot-instructions.md"]
+    assert "`editFiles`" in result[".github/copilot-instructions.md"]
 
 
 def test_copilot_mcp_servers(empty_env):

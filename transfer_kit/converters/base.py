@@ -23,21 +23,31 @@ from transfer_kit.models import (
 TOOL_MAP: dict[str, dict[str, str]] = {
     "gemini": {
         "Read": "read_file",
-        "Edit": "edit_file",
+        "Edit": "replace",
         "Write": "write_file",
-        "Bash": "run_terminal_cmd",
-        "Grep": "grep_search",
-        "Glob": "file_search",
-        "Agent": "run_agent",
+        "Bash": "run_shell_command",
+        "Grep": "search_file_content",
+        "Glob": "glob",
+        "Agent": "codebase_investigator",
+        "WebSearch": "google_web_search",
+        "WebFetch": "web_fetch",
+        "NotebookEdit": "NotebookEdit",
+        "TaskCreate": "TaskCreate",
+        "TaskUpdate": "TaskUpdate",
     },
     "copilot": {
-        "Read": "ReadFile",
-        "Edit": "EditFile",
-        "Write": "WriteFile",
-        "Bash": "RunTerminalCommand",
-        "Grep": "Search",
-        "Glob": "FindFiles",
-        "Agent": "Agent",
+        "Read": "readFile",
+        "Edit": "editFiles",
+        "Write": "createFile",
+        "Bash": "runInTerminal",
+        "Grep": "textSearch",
+        "Glob": "fileSearch",
+        "Agent": "codebase",
+        "WebSearch": "fetch",
+        "WebFetch": "fetch",
+        "NotebookEdit": "editNotebook",
+        "TaskCreate": "todos",
+        "TaskUpdate": "todos",
     },
     "windsurf": {
         "Read": "read_file",
@@ -47,6 +57,11 @@ TOOL_MAP: dict[str, dict[str, str]] = {
         "Grep": "search",
         "Glob": "find_files",
         "Agent": "codeium_agent",
+        "WebSearch": "web_search",
+        "WebFetch": "web_fetch",
+        "NotebookEdit": "NotebookEdit",
+        "TaskCreate": "TaskCreate",
+        "TaskUpdate": "TaskUpdate",
     },
 }
 
@@ -54,16 +69,18 @@ TOOL_MAP: dict[str, dict[str, str]] = {
 def rewrite_tool_references(content: str, target: str) -> str:
     """Replace Claude Code tool names with *target* equivalents.
 
-    Uses word-boundary matching so that e.g. "Read" inside "ReadOnly" is not
-    replaced when the intent is to match the standalone tool name.
+    Only replaces tool names in specific contexts to avoid mangling English prose:
+    - Backtick-wrapped: `Read` -> `read_file`
+    - "the X tool" pattern: the Read tool -> the read_file tool
+    - "Use X to" pattern: Use Read to -> Use read_file to
+    - Function call pattern: Read( -> read_file(
     """
     mapping = TOOL_MAP.get(target, {})
     for claude_name, target_name in mapping.items():
-        content = re.sub(
-            rf"\b{claude_name}\b(?!\w)",
-            target_name,
-            content,
-        )
+        content = re.sub(rf"`{claude_name}`", f"`{target_name}`", content)
+        content = re.sub(rf"\bthe {claude_name} tool\b", f"the {target_name} tool", content)
+        content = re.sub(rf"\bUse {claude_name} to\b", f"Use {target_name} to", content)
+        content = re.sub(rf"\b{claude_name}\(", f"{target_name}(", content)
     return content
 
 

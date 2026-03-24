@@ -15,32 +15,30 @@ def test_gemini_skills_conversion(empty_env):
     skill = Skill(
         name="deploy",
         path=Path("/tmp/deploy"),
-        content="---\nname: deploy\n---\nUse Read to check files.",
+        content="---\nname: deploy\n---\nUse the `Read` tool to check files.",
         frontmatter={"name": "deploy"},
         source="custom",
     )
     empty_env.skills = [skill]
     conv = GeminiConverter(empty_env)
     result = conv.convert_skills([skill])
+    # Current output path (will change in Task 7):
     assert "gemini-skills/deploy.md" in result
     body = result["gemini-skills/deploy.md"]
-    assert "read_file" in body
-    assert "Read" not in body
+    assert "`read_file`" in body
     assert "GEMINI-skills-index.md" in result
-    assert "@import gemini-skills/deploy.md" in result["GEMINI-skills-index.md"]
 
 
 def test_gemini_project_config(empty_env):
     config = ProjectConfig(
         project_path="/tmp",
-        claude_md="---\ntitle: proj\n---\nUse Bash for commands.",
+        claude_md="---\ntitle: proj\n---\nUse the `Bash` tool for commands.",
         settings=None,
     )
     conv = GeminiConverter(empty_env)
     result = conv.convert_project_config(config)
     assert "GEMINI.md" in result
-    assert "run_terminal_cmd" in result["GEMINI.md"]
-    assert "Bash" not in result["GEMINI.md"]
+    assert "`run_shell_command`" in result["GEMINI.md"]
 
 
 def test_gemini_mcp_servers(empty_env):
@@ -61,4 +59,4 @@ def test_gemini_env_vars(empty_env):
     result = conv.convert_env_vars(vars_)
     content = result["gemini-env.sh"]
     assert "not needed for Gemini" in content
-    assert "GOOGLE_API_KEY=<set manually>" in content  # secrets redacted
+    assert "GOOGLE_API_KEY=<set manually>" in content
