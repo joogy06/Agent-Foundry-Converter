@@ -78,8 +78,17 @@ class Importer:
                         continue
 
                     rel_path = Path(rel)
-                    if ".." in rel_path.parts:
+                    if rel_path.is_absolute() or ".." in rel_path.parts:
                         raise ValueError(f"Unsafe path in bundle: {member.name}")
+
+                    # Verify resolved path stays within target
+                    resolved = (tmpdir / rel).resolve()
+                    if not str(resolved).startswith(str(tmpdir.resolve())):
+                        raise ValueError(f"Path escapes target directory: {member.name}")
+
+                    # Skip symlinks
+                    if member.issym() or member.islnk():
+                        continue
 
                     # Filter by requested items.
                     if items is not None and not self._matches_items(rel, items):

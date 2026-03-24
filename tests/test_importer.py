@@ -88,3 +88,54 @@ def test_creates_backup_on_conflict():
         backup_files = list(backups_dir.rglob("test-skill.md"))
         assert len(backup_files) >= 1
         assert backup_files[0].read_text(encoding="utf-8") == "ORIGINAL_MARKER"
+
+
+def test_importer_rejects_absolute_path_in_tar(tmp_path):
+    """Importer must reject tar members with absolute paths."""
+    import io, tarfile, json
+
+    bundle = tmp_path / "malicious.tar.gz"
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        manifest = json.dumps({"bundle_version": 1, "items": [], "checksums": {}}).encode()
+        info = tarfile.TarInfo(name="transfer_kit_bundle/manifest.json")
+        info.size = len(manifest)
+        tar.addfile(info, io.BytesIO(manifest))
+
+        payload = b"pwned"
+        info = tarfile.TarInfo(name="transfer_kit_bundle//etc/passwd")
+        info.size = len(payload)
+        tar.addfile(info, io.BytesIO(payload))
+
+    bundle.write_bytes(buf.getvalue())
+
+    from transfer_kit.core.importer import Importer
+    importer = Importer(bundle)
+    import pytest
+    with pytest.raises(ValueError, match="Unsafe path"):
+        importer.restore(tmp_path / "target")
+
+
+def test_importer_rejects_symlink_in_tar(tmp_path):
+    """Importer must skip symlinks in tar."""
+    import io, tarfile, json
+
+    bundle = tmp_path / "symlink.tar.gz"
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        manifest = json.dumps({"bundle_version": 1, "items": [], "checksums": {}}).encode()
+        info = tarfile.TarInfo(name="transfer_kit_bundle/manifest.json")
+        info.size = len(manifest)
+        tar.addfile(info, io.BytesIO(manifest))
+
+        info = tarfile.TarInfo(name="transfer_kit_bundle/evil_link")
+        info.type = tarfile.SYMTYPE
+        info.linkname = "/etc/shadow"
+        tar.addfile(info)
+
+    bundle.write_bytes(buf.getvalue())
+
+    from transfer_kit.core.importer import Importer
+    importer = Importer(bundle)
+    written = importer.restore(tmp_path / "target")
+    assert not any("evil_link" in str(f) for f in written)
