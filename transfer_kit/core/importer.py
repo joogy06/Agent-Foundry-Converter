@@ -139,6 +139,56 @@ class Importer:
         return written
 
     # ------------------------------------------------------------------
+    # Extract without restoring
+    # ------------------------------------------------------------------
+
+    def extract_to(self, dest_dir: str | Path) -> list[Path]:
+        """Extract bundle contents to *dest_dir* without restoring.
+
+        Returns list of extracted file paths. The caller owns *dest_dir* lifecycle.
+        """
+        dest_dir = Path(dest_dir)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+        manifest = self.read_manifest()
+        checksums: dict[str, str] = manifest.get("checksums", {})
+        extracted: list[Path] = []
+
+        with tarfile.open(self.bundle_path, "r:gz") as tar:
+            for member in tar.getmembers():
+                if not member.name.startswith(_BUNDLE_PREFIX):
+                    continue
+                rel = member.name[len(_BUNDLE_PREFIX):]
+                if not rel or rel == "manifest.json":
+                    continue
+
+                rel_path = Path(rel)
+                if rel_path.is_absolute() or ".." in rel_path.parts:
+                    raise ValueError(f"Unsafe path in bundle: {member.name}")
+                if member.issym() or member.islnk():
+                    continue
+
+                f = tar.extractfile(member)
+                if f is None:
+                    continue
+                data = f.read()
+
+                expected = checksums.get(rel)
+                if expected is not None:
+                    actual = hashlib.sha256(data).hexdigest()
+                    if actual != expected:
+                        raise ValueError(
+                            f"Checksum mismatch for {rel}: expected {expected}, got {actual}"
+                        )
+
+                dest = dest_dir / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(data)
+                extracted.append(dest)
+
+        return extracted
+
+    # ------------------------------------------------------------------
     # Backup helper
     # ------------------------------------------------------------------
 

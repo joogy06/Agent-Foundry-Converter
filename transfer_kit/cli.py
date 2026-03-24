@@ -139,48 +139,50 @@ def import_cmd(ctx: click.Context, from_path: str, conflict: str, run_compare: b
     console.print(f"[green]Imported bundle from {from_path}[/green]")
 
     if run_compare:
+        import tempfile
         from transfer_kit.core.comparator import ConfigComparator
 
-        extracted_dir = importer.get_extracted_dir()
-        comp = ConfigComparator(Path(extracted_dir), Path(target))
-        diffs = comp.compare()
+        with tempfile.TemporaryDirectory(prefix="transfer_kit_compare_") as compare_dir:
+            importer.extract_to(compare_dir)
+            comp = ConfigComparator(Path(compare_dir), Path(target))
+            diffs = comp.compare()
 
-        if not diffs:
-            console.print("[green]No differences found after import.[/]")
-            return
+            if not diffs:
+                console.print("[green]No differences found after import.[/]")
+                return
 
-        console.print(f"\n[cyan]Found {len(diffs)} difference(s) after import:[/]\n")
+            console.print(f"\n[cyan]Found {len(diffs)} difference(s) after import:[/]\n")
 
-        selections = {}
-        for i, diff in enumerate(diffs):
-            _display_diff(diff)
+            selections = {}
+            for i, diff in enumerate(diffs):
+                _display_diff(diff)
 
-            if not ctx.obj.get("yes"):
-                if diff.item_type == "removed":
-                    console.print("  [dim](informational — no action required)[/]\n")
-                    continue
+                if not ctx.obj.get("yes"):
+                    if diff.item_type == "removed":
+                        console.print("  [dim](informational — no action required)[/]\n")
+                        continue
 
-                action_label = "Add" if diff.item_type == "new" else "Use incoming"
-                choice = questionary.select(
-                    "Action:",
-                    choices=[
-                        questionary.Choice("Keep current", value="keep"),
-                        questionary.Choice(action_label, value="incoming"),
-                        questionary.Choice("Skip", value="skip"),
-                    ] if diff.item_type != "new" else [
-                        questionary.Choice("Add", value="incoming"),
-                        questionary.Choice("Skip", value="skip"),
-                    ],
-                ).ask()
-                selections[i] = choice or "skip"
+                    action_label = "Add" if diff.item_type == "new" else "Use incoming"
+                    choice = questionary.select(
+                        "Action:",
+                        choices=[
+                            questionary.Choice("Keep current", value="keep"),
+                            questionary.Choice(action_label, value="incoming"),
+                            questionary.Choice("Skip", value="skip"),
+                        ] if diff.item_type != "new" else [
+                            questionary.Choice("Add", value="incoming"),
+                            questionary.Choice("Skip", value="skip"),
+                        ],
+                    ).ask()
+                    selections[i] = choice or "skip"
+                else:
+                    selections[i] = "incoming"
+
+            written = comp.apply_selections(diffs, selections)
+            if written:
+                console.print(f"\n[green]Updated {len(written)} file(s) after compare.[/]")
             else:
-                selections[i] = "incoming"
-
-        written = comp.apply_selections(diffs, selections)
-        if written:
-            console.print(f"\n[green]Updated {len(written)} file(s) after compare.[/]")
-        else:
-            console.print("\n[yellow]No additional changes applied.[/]")
+                console.print("\n[yellow]No additional changes applied.[/]")
 
 
 # ---------------------------------------------------------------------------

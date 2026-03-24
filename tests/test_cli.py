@@ -1,5 +1,7 @@
 """Tests for the CLI layer."""
 
+from pathlib import Path
+
 from click.testing import CliRunner
 
 from transfer_kit.cli import main
@@ -74,3 +76,27 @@ def test_cli_version():
     result = runner.invoke(main, ["--version"])
     assert result.exit_code == 0
     assert "0.1.0" in result.output
+
+
+def test_cli_import_compare_does_not_crash(tmp_path, monkeypatch):
+    """import --compare should not raise AttributeError."""
+    from transfer_kit.core.scanner import Scanner
+    from transfer_kit.core.exporter import Exporter
+
+    fixtures = Path(__file__).parent / "fixtures" / "claude_home"
+    scanner = Scanner(claude_home=fixtures, shell_profiles=[])
+    env = scanner.scan()
+    bundle = tmp_path / "bundle.tar.gz"
+    Exporter(env).export(bundle)
+
+    target = tmp_path / "target_home"
+    target.mkdir()
+
+    monkeypatch.setattr("transfer_kit.platform_utils.get_claude_home", lambda: target)
+
+    runner = CliRunner()
+    result = runner.invoke(main, [
+        "--yes", "import", "--from", str(bundle), "--compare",
+    ], obj={"dry_run": False, "yes": True, "verbose": False,
+            "quiet": False, "no_color": False})
+    assert result.exit_code == 0, f"Crashed: {result.output}\n{result.exception}"
