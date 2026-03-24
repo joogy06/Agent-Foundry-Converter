@@ -1,6 +1,11 @@
 # Project History
 
-## 2026-03-24 — v0.2.0 Release
+## 2026-03-24 — v0.2.0 Release & First Live Export
+
+### First live conversion run
+- Exported 78 skills from Claude Code to VS Code Copilot format (`output_copilot/.github/instructions/`)
+- Exported 78 skills from Claude Code to Gemini CLI format (`output_gemini/.gemini/skills/`)
+- MCP and env sections excluded per user preference — skills only
 
 ### v0.2.0 — Bug Fixes, Platform Support, Feature Enhancements
 
