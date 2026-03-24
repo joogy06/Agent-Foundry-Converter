@@ -184,6 +184,11 @@ class Scanner:
 
             memory_files = sorted(child.glob("*.memory.*"))
 
+            # Current memory directory structure
+            memory_dir = child / "memory"
+            if memory_dir.is_dir():
+                memory_files.extend(sorted(memory_dir.rglob("*.md")))
+
             projects.append(
                 ProjectConfig(
                     project_path=child.name,

@@ -220,6 +220,24 @@ class TestPowerShellEnvVars:
         assert "ANTHROPIC_API_KEY" in names
 
 
+class TestMemoryDirectory:
+    def test_memory_dir_files_scanned(self, tmp_path):
+        proj_dir = tmp_path / "projects" / "-test" / "memory"
+        proj_dir.mkdir(parents=True)
+        (proj_dir / "MEMORY.md").write_text("# Index\n", encoding="utf-8")
+        (proj_dir / "note.md").write_text("test\n", encoding="utf-8")
+        (tmp_path / "projects" / "-test" / "CLAUDE.md").write_text("# Test", encoding="utf-8")
+
+        scanner = Scanner(claude_home=tmp_path, shell_profiles=[])
+        env = scanner.scan()
+        assert len(env.projects) == 1
+        proj = env.projects[0]
+        assert len(proj.memory_files) >= 2
+        mem_names = [f.name for f in proj.memory_files]
+        assert "MEMORY.md" in mem_names
+        assert "note.md" in mem_names
+
+
 class TestEdgeCases:
     def test_empty_claude_home(self, tmp_path: Path) -> None:
         empty = tmp_path / "empty_claude"

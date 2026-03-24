@@ -12,6 +12,7 @@ from pathlib import Path
 
 import transfer_kit
 from transfer_kit.models import ClaudeEnvironment, EnvVar
+from transfer_kit.platform_utils import get_claude_home
 
 
 _BUNDLE_PREFIX = "transfer_kit_bundle/"
@@ -20,9 +21,11 @@ _BUNDLE_PREFIX = "transfer_kit_bundle/"
 class Exporter:
     """Serialize a :class:`ClaudeEnvironment` into a portable .tar.gz bundle."""
 
-    def __init__(self, env: ClaudeEnvironment, include_secrets: bool = False) -> None:
+    def __init__(self, env: ClaudeEnvironment, include_secrets: bool = False,
+                 claude_home: Path | None = None) -> None:
         self.env = env
         self.include_secrets = include_secrets
+        self._claude_home = claude_home or get_claude_home()
 
     # ------------------------------------------------------------------
     # Public
@@ -128,6 +131,14 @@ class Exporter:
                 out[f"{prefix}/CLAUDE.md"] = proj.claude_md.encode("utf-8")
             if proj.settings is not None:
                 out[f"{prefix}/settings.json"] = json.dumps(proj.settings, indent=2).encode("utf-8")
+            for mem_file in proj.memory_files:
+                if mem_file.is_file():
+                    proj_dir = self._claude_home / "projects" / proj.project_path
+                    try:
+                        mem_rel = mem_file.relative_to(proj_dir)
+                    except ValueError:
+                        mem_rel = Path("memory") / mem_file.name
+                    out[f"{prefix}/{mem_rel}"] = mem_file.read_text(encoding="utf-8").encode("utf-8")
         return out
 
     def _stage_mcp(self) -> dict[str, bytes]:
