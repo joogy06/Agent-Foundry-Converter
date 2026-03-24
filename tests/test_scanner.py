@@ -210,6 +210,16 @@ class TestEnvVars:
 # ------------------------------------------------------------------
 
 
+class TestPowerShellEnvVars:
+    def test_powershell_env_var_detected(self, tmp_path):
+        profile = tmp_path / "profile.ps1"
+        profile.write_text("$env:ANTHROPIC_API_KEY = 'sk-test'\n", encoding="utf-8")
+        scanner = Scanner(claude_home=tmp_path, shell_profiles=[profile])
+        env = scanner.scan()
+        names = [v.name for v in env.env_vars]
+        assert "ANTHROPIC_API_KEY" in names
+
+
 class TestEdgeCases:
     def test_empty_claude_home(self, tmp_path: Path) -> None:
         empty = tmp_path / "empty_claude"

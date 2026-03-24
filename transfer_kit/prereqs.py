@@ -6,6 +6,8 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
+from transfer_kit.platform_utils import get_os
+
 
 @dataclass
 class Prerequisite:
@@ -79,9 +81,16 @@ INSTALL_HINTS: dict[str, dict[str, str]] = {
     },
 }
 
+def _python_binary() -> str:
+    """Return the correct Python binary name for the current platform."""
+    if get_os() == "windows":
+        return "python"
+    return "python3"
+
+
 _VERSION_FLAGS: dict[str, list[str]] = {
     "git": ["git", "--version"],
-    "python3": ["python3", "--version"],
+    "python3": [_python_binary(), "--version"],
     "node": ["node", "--version"],
     "rsync": ["rsync", "--version"],
     "gpg": ["gpg", "--version"],
@@ -129,12 +138,13 @@ def check_prereqs(names: list[str] | None = None) -> list[Prerequisite]:
 
     results: list[Prerequisite] = []
     for name in names:
-        found = shutil.which(name) is not None
+        check_cmd = _python_binary() if name == "python3" else name
+        found = shutil.which(check_cmd) is not None
         version = _get_version(name) if found else None
         results.append(
             Prerequisite(
                 name=name,
-                check_cmd=name,
+                check_cmd=check_cmd,
                 required_for=_REQUIRED_FOR.get(name, ""),
                 found=found,
                 version=version,

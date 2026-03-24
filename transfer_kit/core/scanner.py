@@ -232,18 +232,28 @@ class Scanner:
 
     def _scan_env_vars(self) -> list[EnvVar]:
         env_vars: list[EnvVar] = []
-        export_re = re.compile(
+        bash_re = re.compile(
             r"""^export\s+([A-Za-z_][A-Za-z0-9_]*)=(.*)$"""
+        )
+        ps_re = re.compile(
+            r"""^\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$"""
         )
         for profile in self.shell_profiles:
             if not profile.is_file():
                 continue
+            is_powershell = profile.suffix.lower() == ".ps1"
+            active_re = ps_re if is_powershell else bash_re
             for line in profile.read_text(encoding="utf-8").splitlines():
-                m = export_re.match(line.strip())
+                m = active_re.match(line.strip())
                 if not m:
                     continue
                 name = m.group(1)
-                value = m.group(2).strip("\"'")
+                raw = m.group(2)
+                if (raw.startswith('"') and raw.endswith('"')) or \
+                   (raw.startswith("'") and raw.endswith("'")):
+                    value = raw[1:-1]
+                else:
+                    value = raw
                 if name in _STANDARD_VARS:
                     continue
                 env_vars.append(
