@@ -59,6 +59,21 @@
 | `pyproject.toml` | Package config, dependencies, entry point |
 | `.gitignore` | Git ignore rules |
 
+## Test Fixtures (`tests/fixtures/`)
+
+| File | Purpose |
+|------|---------|
+| `claude_home/settings.json` | Fixture: global settings |
+| `claude_home/settings.local.json` | Fixture: local settings |
+| `claude_home/plugins/installed_plugins.json` | Fixture: installed plugins |
+| `claude_home/skills/test-skill/test-skill.md` | Fixture: custom skill |
+| `claude_home/projects/-test-project/CLAUDE.md` | Fixture: project instructions |
+| `claude_home/projects/-test-project/settings.json` | Fixture: project settings |
+| `claude_home/projects/-test-project/memory/MEMORY.md` | Fixture: project memory index |
+| `claude_home/projects/-test-project/memory/project_notes.md` | Fixture: project memory notes |
+| `claude_home/plans/test-plan.md` | Fixture: saved plan |
+| `claude_home/teams/test-team/config.json` | Fixture: team config |
+
 ## Docs (`docs/`)
 
 | File | Purpose |
