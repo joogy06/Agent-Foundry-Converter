@@ -80,4 +80,5 @@
 |------|---------|
 | `superpowers/specs/2026-03-15-transfer-kit-design.md` | Transfer-kit design specification |
 | `superpowers/specs/2026-03-15-compare-merge-design.md` | Compare & merge feature design spec |
-| `superpowers/plans/2026-03-15-transfer-kit-plan.md` | Implementation plan (18 tasks, 8 chunks) |
+| `superpowers/plans/2026-03-15-transfer-kit-plan.md` | v0.1.0 implementation plan (18 tasks, 8 chunks) |
+| `superpowers/plans/2026-03-24-transfer-kit-v0.2.0-plan.md` | v0.2.0 improvements plan (bugs, Windows, converters, tests) |
