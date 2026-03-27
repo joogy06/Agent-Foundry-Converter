@@ -56,6 +56,8 @@
 | `README.md` | Installation, usage, commands reference |
 | `history.md` | Project timeline and milestones |
 | `index.md` | This file — module/file index |
+| `PROJECT.md` | Architecture overview, component map, data flow |
+| `deploy_skills.py` | Cross-platform AI tool skill scanner & deployer (standalone) |
 | `pyproject.toml` | Package config, dependencies, entry point |
 | `.gitignore` | Git ignore rules |
 
