@@ -1,5 +1,24 @@
 # Project History
 
+## 2026-03-27 — deploy_skills.py v1.1.0
+
+### Standalone skill scanner & deployer
+- `15eaeaa` feat: add cross-platform skill scanner & deployer (v1.1.0)
+- `89e0156` docs: add PROJECT.md architecture overview, v0.2.0 plan, update index
+
+Standalone Python script (no external dependencies) that:
+- Detects 5 AI coding tools: Claude Code, GitHub Copilot, Gemini CLI, Windsurf, Cursor
+- Scans all global + project-level skill locations per tool, per OS
+- Deploys skills between tools with format conversion and tool name rewriting
+- Falls back to user prompts when auto-detection fails
+- Supports 2026 conventions: AGENTS.md, .agents/skills/, .cursor/rules/*/RULE.md, .github/agents/
+
+Cross-platform review (Windows 11 + RHEL) identified and fixed 15 issues:
+- 5 critical: substring rewriting corruption, CRLF/BOM handling, subprocess encoding, double-mapping
+- 10 moderate: Windows reserved filenames, .cmd binary detection, Windsurf APPDATA path, Python version guard, Path.home safety, input() guards, overwrite protection, path component matching, extra PATH lookup, dead code removal
+
+---
+
 ## 2026-03-24 — v0.2.0 Release & First Live Export
 
 ### First live conversion run

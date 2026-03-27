@@ -33,6 +33,15 @@ transfer_kit/
     └── windsurf.py         ← Windsurf: .windsurf/rules/, mcp_config.json
 ```
 
+## Standalone Tools
+
+```
+deploy_skills.py              ← Cross-platform skill scanner & deployer (stdlib only, no deps)
+    Scanner                   ← Detects Claude, Copilot, Gemini, Windsurf, Cursor installations
+    Deployer                  ← Converts and writes skills to target format
+    rewrite_tool_refs()       ← Tool name rewriting engine (longest-match-first)
+```
+
 ## Data Flow
 
 ```
@@ -41,6 +50,9 @@ transfer_kit/
                                     importer ←── .tar.gz bundle
                                           │
                                     converters ──→ Copilot / Gemini / Windsurf output
+
+deploy_skills.py:
+    System scan ──→ DetectedTool[] ──→ Skill[] ──→ rewrite + format ──→ target dirs
 ```
 
 ## Integration Edges
@@ -51,7 +63,7 @@ transfer_kit/
 | **Shell profiles** | `~/.bashrc`, `~/.zshrc`, PowerShell `$PROFILE` — env var managed blocks |
 | **Git** | GitPython for sync push/pull to remote repos |
 | **GPG** | Optional encryption via gpg/gpg2 binary |
-| **Target IDEs** | Copilot (`.github/`), Gemini (`.gemini/`, `GEMINI.md`), Windsurf (`.windsurf/`) |
+| **Target IDEs** | Copilot (`.github/`), Gemini (`.gemini/`, `GEMINI.md`), Windsurf (`.windsurf/`), Cursor (`.cursor/rules/`) |
 
 ## External Dependencies
 
