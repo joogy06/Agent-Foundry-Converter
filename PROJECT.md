@@ -2,12 +2,11 @@
 
 > Python CLI tool for migrating Claude Code configuration between machines and converting it to other IDE formats.
 
-**Version:** 0.2.0 (v0.3.0 designed, not yet implemented)
+**Version:** 0.2.0
 **Entry point:** `transfer-kit` CLI / `python -m transfer_kit`
 **Python:** 3.10+
 **Tests:** 132 (pytest)
 **CI:** `.github/workflows/ci.yml` — matrix: ubuntu/windows/macos x Python 3.10–3.13
-**v0.3.0 design:** `docs/superpowers/specs/2026-03-30-smart-export-design.md` — approved, ready for implementation
 
 ---
 
@@ -35,16 +34,6 @@ transfer_kit/
     └── windsurf.py         ← Windsurf: .windsurf/rules/, mcp_config.json
 ```
 
-## Standalone Tools
-
-```
-deploy_skills.py              ← Cross-platform skill scanner & deployer (stdlib only, no deps)
-    Scanner                   ← Detects Claude, Copilot, Gemini, Windsurf, Cursor installations
-    Deployer                  ← Converts and writes skills to target format
-    rewrite_tool_refs()       ← Tool name rewriting engine (longest-match-first)
-folder_to_txt.py              ← Folder-to-text archive/rebuild utility (stdlib only, no deps)
-```
-
 ## Data Flow
 
 ```
@@ -54,8 +43,6 @@ folder_to_txt.py              ← Folder-to-text archive/rebuild utility (stdlib
                                           │
                                     converters ──→ Copilot / Gemini / Windsurf output
 
-deploy_skills.py:
-    System scan ──→ DetectedTool[] ──→ Skill[] ──→ rewrite + format ──→ target dirs
 ```
 
 ## Integration Edges

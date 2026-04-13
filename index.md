@@ -59,8 +59,6 @@
 | `PROJECT.md` | Architecture overview, component map, data flow |
 | `CHANGELOG.md` | Keep-a-Changelog format release notes |
 | `LICENSE` | MIT license |
-| `deploy_skills.py` | Cross-platform AI tool skill scanner & deployer (standalone) |
-| `folder_to_txt.py` | Folder-to-text archive/rebuild utility (standalone) |
 | `pyproject.toml` | Package config, dependencies, entry point |
 | `.gitignore` | Git ignore rules |
 
@@ -85,12 +83,3 @@
 | `claude_home/plans/test-plan.md` | Fixture: saved plan |
 | `claude_home/teams/test-team/config.json` | Fixture: team config |
 
-## Docs (`docs/`)
-
-| File | Purpose |
-|------|---------|
-| `superpowers/specs/2026-03-15-transfer-kit-design.md` | Transfer-kit design specification |
-| `superpowers/specs/2026-03-15-compare-merge-design.md` | Compare & merge feature design spec |
-| `superpowers/specs/2026-03-30-smart-export-design.md` | v0.3.0 Smart Export Pipeline design (16 sections: two-layer export, portability, agents, env awareness, self-healing, REGISTRY.md) |
-| `superpowers/plans/2026-03-15-transfer-kit-plan.md` | v0.1.0 implementation plan (18 tasks, 8 chunks) |
-| `superpowers/plans/2026-03-24-transfer-kit-v0.2.0-plan.md` | v0.2.0 improvements plan (bugs, Windows, converters, tests) |

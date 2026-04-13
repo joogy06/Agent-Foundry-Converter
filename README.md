@@ -15,11 +15,7 @@ Transfer Kit v0.2.0 is functional and has 132 passing tests. It can scan,
 export, import, convert, compare, and sync Claude Code configurations across
 machines and to GitHub Copilot, Gemini CLI, and Windsurf.
 
-**v0.3.0 (Smart Export)** is fully designed but not yet implemented. It will
-add AI-assisted semantic translation, portability classification, environment
-awareness, agent support, and a Cursor converter. See
-[`docs/superpowers/specs/2026-03-30-smart-export-design.md`](docs/superpowers/specs/2026-03-30-smart-export-design.md)
-and [`CHANGELOG.md`](CHANGELOG.md) for the roadmap.
+See [`CHANGELOG.md`](CHANGELOG.md) for the roadmap.
 
 Interfaces may change before v1.0.
 
