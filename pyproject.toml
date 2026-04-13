@@ -4,20 +4,62 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "transfer-kit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Migrate Claude Code config and convert to other IDEs"
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
-dependencies = [
-    "click>=8.1",
-    "questionary>=2.0",
-    "rich>=13.0",
-    "gitpython>=3.1",
-    "pyyaml>=6.0",
-    "cryptography>=41.0",
+authors = [
+    { name = "TadasRemeikis" },
 ]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "click>=8.1,<9",
+    "questionary>=2.0,<3",
+    "rich>=13.0,<15",
+    "gitpython>=3.1,<4",
+    "pyyaml>=6.0,<7",
+    "cryptography>=44.0,<46",
+]
+
+[project.urls]
+Homepage = "https://github.com/joogy06/Agent-Foundry-Converter"
+Repository = "https://github.com/joogy06/Agent-Foundry-Converter"
+Issues = "https://github.com/joogy06/Agent-Foundry-Converter/issues"
+Changelog = "https://github.com/joogy06/Agent-Foundry-Converter/blob/main/CHANGELOG.md"
 
 [project.scripts]
 transfer-kit = "transfer_kit.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "pytest-tmp-files>=0.0.2"]
+dev = [
+    "pytest>=7.0,<9",
+    "pytest-tmp-files>=0.0.2",
+]
+
+[tool.setuptools.packages.find]
+include = ["transfer_kit*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+transfer_kit = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["-ra", "--strict-markers"]

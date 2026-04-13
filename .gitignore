@@ -1,8 +1,70 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 *.egg-info/
+*.egg
 dist/
 build/
+wheels/
+.eggs/
+.installed.cfg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing
 .pytest_cache/
-*.tar.gz
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+# Editors / IDEs
+.idea/
+.vscode/
+.spyderproject
+.spyproject
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets (defense in depth — never commit credentials)
 .env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.credentials*
+credentials.json
+secrets.json
+*.secret
+
+# Transfer-kit build artifacts and transient output
+*.tar.gz
+*.tar.gz.enc
+transfer_kit_bundle*
+transfer_kit_*_output/
+output_*/
+
+# Local tool state (not for publication)
+.claude/
+session_control.md
+folder_to_txt.prefs.json
+transfer_kit_archive.txt
+*_archive.txt
+tasks.md

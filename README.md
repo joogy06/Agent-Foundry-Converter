@@ -1,6 +1,27 @@
 # Transfer Kit
 
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-132%20passing-brightgreen.svg)](tests/)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#project-status)
+
 Migrate Claude Code configuration to new machines and convert it to other IDEs.
+
+## Project Status
+
+**Alpha — v0.2.0 shipped, v0.3.0 in design.**
+
+Transfer Kit v0.2.0 is functional and has 132 passing tests. It can scan,
+export, import, convert, compare, and sync Claude Code configurations across
+machines and to GitHub Copilot, Gemini CLI, and Windsurf.
+
+**v0.3.0 (Smart Export)** is fully designed but not yet implemented. It will
+add AI-assisted semantic translation, portability classification, environment
+awareness, agent support, and a Cursor converter. See
+[`docs/superpowers/specs/2026-03-30-smart-export-design.md`](docs/superpowers/specs/2026-03-30-smart-export-design.md)
+and [`CHANGELOG.md`](CHANGELOG.md) for the roadmap.
+
+Interfaces may change before v1.0.
 
 ## Features
 
@@ -20,7 +41,8 @@ Migrate Claude Code configuration to new machines and convert it to other IDEs.
 Requires Python 3.10 or later.
 
 ```bash
-git clone <repo-url> && cd transfer_kit
+git clone https://github.com/joogy06/Agent-Foundry-Converter.git
+cd Agent-Foundry-Converter
 pip install .
 ```
 
@@ -292,6 +314,14 @@ pip install -e ".[dev]"
 pytest
 ```
 
+Tests run on Linux, macOS, and Windows via GitHub Actions (see
+`.github/workflows/ci.yml`) across Python 3.10–3.13.
+
+## Contributing
+
+Bug reports, feature requests, and pull requests welcome. Please check
+existing issues first and keep changes focused. Tests must stay green.
+
 ## License
 
-MIT
+MIT — see [`LICENSE`](LICENSE).

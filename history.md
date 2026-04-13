@@ -1,5 +1,52 @@
 # Project History
 
+## 2026-04-11 — Pre-Publication Audit (second pass)
+
+- Re-audited codebase for secrets, PII, and machine paths.
+- Codebase clean: no real secrets, test fixtures all synthetic.
+- Fixed remaining local machine path in `docs/superpowers/plans/2026-03-15-transfer-kit-plan.md:72` (replaced with `<repo-root>`).
+- Sanitized documentation files for public release.
+
+---
+
+## 2026-04-10 — Pre-Publication Audit & Cleanup
+
+- Security audit: reviewed entire codebase for secrets, PII, machine paths. Verdict: safe after fixes.
+- Deleted generated output directories and archive files containing private paths.
+- Added: `LICENSE` (MIT), `CHANGELOG.md`, `.github/workflows/ci.yml` (3 OS x 4 Python matrix), `transfer_kit/py.typed` marker.
+- Expanded `.gitignore` for comprehensive coverage.
+- Fixed `pyproject.toml`: version 0.1.0 -> 0.2.0, `cryptography>=44,<46` (CVE fixes), upper bounds on all deps, classifiers, pytest config.
+- Updated `README.md`: status banner, badges, contributing section.
+- 132 tests passing.
+
+---
+
+## 2026-03-31 — v0.3.0 Design: Smart Export Pipeline
+
+### Design spec completed (not yet implemented)
+- Design spec: `docs/superpowers/specs/2026-03-30-smart-export-design.md` (16 sections)
+
+**Design exploration** identified 39 codebase issues:
+- 6 critical bugs (version mismatch, shell injection, GPG, sync staging)
+- 8 high gaps (no agents, no env awareness, no self-test, tool map divergence)
+- 10 medium code quality issues
+- 5 innovation opportunities
+
+**Design decisions made:**
+1. Two-layer export pipeline: Layer 1 (deterministic regex) + Layer 2 (AI semantic translation via `claude -p` / `codex exec`)
+2. Portability classification: portable (~70 skills) / partial (~12) / claude-only (~13 + 3 agents)
+3. `transfer-flow.md` deployment manifest — standalone + pointer in auto-loaded entry file
+4. `REGISTRY.md` master ecosystem map — cascade diagram, cross-refs, capability requirements
+5. Environment awareness: capability prober, analyzer, self-test.sh, failure-memory.json
+6. Agent support: Agent model, scanner, converters (currently all 3 agents are claude-only)
+7. `smart-export` CLI subcommand (not standalone script) — layers on existing `convert`
+8. Innovations: failure memory (stateful self-healing), provider brokerage, offline skill capsules
+
+**Implementation plan:** 9 phases (P0 bug fixes -> P1-P7 features -> P4.5 registry)
+**Status:** Design approved, spec reviewed, ready for implementation
+
+---
+
 ## 2026-03-27 — deploy_skills.py v1.1.0
 
 ### Standalone skill scanner & deployer
@@ -22,8 +69,8 @@ Cross-platform review (Windows 11 + RHEL) identified and fixed 15 issues:
 ## 2026-03-24 — v0.2.0 Release & First Live Export
 
 ### First live conversion run
-- Exported 78 skills from Claude Code to VS Code Copilot format (`output_copilot/.github/instructions/`)
-- Exported 78 skills from Claude Code to Gemini CLI format (`output_gemini/.gemini/skills/`)
+- Exported 78 skills from Claude Code to VS Code Copilot format
+- Exported 78 skills from Claude Code to Gemini CLI format
 - MCP and env sections excluded per user preference — skills only
 
 ### v0.2.0 — Bug Fixes, Platform Support, Feature Enhancements
