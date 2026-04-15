@@ -50,6 +50,20 @@ def test_rewrite_unknown_target_is_identity() -> None:
     assert rewrite_paths("~/.claude/skills/foo", "nonexistent") == "~/.claude/skills/foo"
 
 
+def test_rewrite_windows_workspace_with_backslash_escape_chars() -> None:
+    # Regression: Windows absolute paths with backslashes must not be
+    # mis-parsed as regex replacement escapes (\U, \a, \n, ...).
+    # Historical bug raised ``KeyError: '\\U'`` when workspace contained
+    # ``C:\Users\...``.
+    win_ws = r"C:\Users\runneradmin\AppData\Local\tk\out"
+    out = rewrite_paths("~/.claude/skills/foo", "copilot-cli", workspace=win_ws)
+    assert out == win_ws + "/.github/instructions/foo"
+    # Escape-rich paths must also survive.
+    tricky = r"C:\a\n\t\b\f\r\v\s\0\1"
+    out2 = rewrite_paths("~/.claude/skills/bar", "copilot-cli", workspace=tricky)
+    assert out2 == tricky + "/.github/instructions/bar"
+
+
 # -- inject_env_shim ----------------------------------------------------------
 
 

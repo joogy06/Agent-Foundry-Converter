@@ -101,7 +101,10 @@ def rewrite_paths(content: str, target: str, workspace: str = ".") -> str:
     out = content
     for pattern, template in rules:
         replacement = template.replace("{workspace}", workspace)
-        out = pattern.sub(replacement, out)
+        # Lambda avoids re.sub's backslash-escape parsing of the replacement
+        # string, which would raise KeyError on Windows paths like
+        # ``C:\Users\...`` (``\U`` is an invalid replacement escape).
+        out = pattern.sub(lambda _m, r=replacement: r, out)
     return out
 
 
