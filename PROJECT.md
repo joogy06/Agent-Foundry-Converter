@@ -2,10 +2,10 @@
 
 > Python CLI tool for migrating Claude Code configuration between machines and converting it to other IDE formats.
 
-**Version:** 0.3.0 (in progress — pull feature implemented, Smart Export parallel track deferred)
+**Version:** 0.3.0 (released 2026-04-15 — agent-foundry pull feature shipped; Smart Export parallel track still deferred)
 **Entry point:** `transfer-kit` CLI / `python -m transfer_kit`
 **Python:** 3.10+
-**Tests:** 203 (pytest) — 132 baseline + 71 new for pull flow
+**Tests:** 204 (pytest) — 132 baseline + 72 new (71 for pull flow + 1 Windows-path regression test)
 **CI:** `.github/workflows/ci.yml` — matrix: ubuntu/windows/macos x Python 3.10–3.13
 **Repo:** https://github.com/joogy06/Agent-Foundry-Converter (public, MIT)
 

@@ -1,5 +1,27 @@
 # Project History
 
+## 2026-04-15 — v0.3.0 Released (CI Green, Tag + GitHub Release Live)
+
+### Post-merge CI cleanup
+- Fix `path_rewriter.py`: `re.sub` was parsing Windows path backslashes (`C:\Users\...`) as regex replacement escapes, raising `KeyError: '\\U'` on 6 `test_pull` jobs. Wrapped replacement in a `lambda _m: replacement` to bypass `parse_template`. Added regression test (`test_rewrite_windows_workspace_with_backslash_escape_chars`).
+- Fix 3 pre-existing Windows test biases (failing on master since 2026-04-13):
+  - `test_env::test_apply_creates_file` and `test_apply_updates_existing_block` — tests asserted POSIX `export NAME="value"` but `EnvManager.apply()` correctly emits PowerShell `$env:NAME = 'value'` on Windows. New `_expected_line()` helper renders per-platform.
+  - `test_importer::test_importer_rejects_absolute_path_in_tar` — regex `match="Unsafe path"` failed on Windows where `Path("//etc/passwd")` is not absolute and the importer falls through to "Path escapes target directory". Regex now accepts both messages.
+- Self-inflicted regression on `test_render_block` (over-edited in the platform-aware pass) reverted — `render_block()` is a platform-neutral classmethod that always emits POSIX `export` syntax.
+
+### Release
+- Annotated tag `v0.3.0` pushed.
+- GitHub release `v0.3.0 — Agent-Foundry Pull + Copilot CLI converter` published with the [0.3.0] CHANGELOG section as notes.
+- CHANGELOG restructured: `[Unreleased] — v0.3.0` promoted to `[0.3.0] — 2026-04-15`. Unshipped Smart Export and queued P0 bug fixes moved to a new `[Unreleased]` section.
+- 204 tests pass on 12/12 CI jobs (Ubuntu/macOS/Windows × Python 3.10/3.11/3.12/3.13). First fully-green CI run since 2026-04-13.
+
+### Notes for next session
+- PAT in `.git/config` flagged but not yet rotated/moved (terminal is trusted; cleanup path optional).
+- Forge contract-map signing requires `session.key` read as **bytes** (no `.strip()`) to match `gates.py G1` canonical HMAC. Caused a one-iteration retry during Step 8a.2.
+- Gemini direct CLI invocation broken in this session; reach Gemini via MCP `ask-gemini` instead. Memory note saved.
+
+---
+
 ## 2026-04-15 — Agent-Foundry Pull (v0.3.0) — Implemented
 
 ### bob executed the approved design end-to-end
