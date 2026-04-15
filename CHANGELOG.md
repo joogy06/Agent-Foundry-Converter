@@ -5,24 +5,59 @@ All notable changes to Transfer Kit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v0.3.0 Smart Export (designed, not yet shipped)
+## [Unreleased] — v0.3.0
 
-Full design in `docs/superpowers/specs/2026-03-30-smart-export-design.md`.
+### Added — Agent-Foundry Pull (inverse flow)
 
-### Planned
+Design: `docs/plans/2026-04-15-agent-foundry-pull-design.md`.
 
-- Two-layer export pipeline: deterministic regex rewriting (Layer 1) plus
-  AI-assisted semantic translation via `claude -p` / `codex exec` (Layer 2).
-- Portability classification (portable / partial / claude-only) applied before
-  conversion so incompatible items are filtered or flagged.
-- Environment awareness: capability prober, analyzer, `self-test.sh`, and a
-  `failure-memory.json` for self-healing deploys.
-- `Agent` dataclass, `_scan_agents()`, and agent-aware converters.
-- `Cursor` converter (fifth target IDE).
-- `REGISTRY.md` master ecosystem map with cascade diagram and capability
-  requirements.
-- `transfer-flow.md` per-deployment manifest.
-- `smart-export` CLI subcommand layering on existing `convert`.
+- New CLI subcommand `transfer-kit pull <git-url-or-path>` for pulling the
+  upstream `joogy06/agent-foundry` payload (skills, agents, meta runtime,
+  dependency docs) into a host-IDE layout (Copilot, Copilot CLI, Gemini,
+  Windsurf).
+- New converter `transfer_kit/converters/copilot_cli.py` for GitHub Copilot
+  CLI — emits `AGENTS.md`, `.github/agents/`, `.github/instructions/`,
+  `docs/agent-foundry/_meta/`, `.mcp.json`, rendered `DEPENDENCIES.md`.
+- New core modules: `foundry_loader.py`, `path_rewriter.py`,
+  `url_sanitizer.py`, `compat.py`, `xref_resolver.py`, `pull.py`.
+- Compatibility matrix (`transfer_kit/data/compat_matrix.yaml`) declaring
+  per-artifact × per-target portability (portable / degraded / docs-only /
+  claude-only / excluded). Includes content-marker detection for files that
+  look portable by name but reference Claude-only runtime primitives.
+- Host-portable G2 schema validator shim (`transfer_kit/data/gates_g2_shim.py`)
+  shipped to non-Claude targets. G1 (HMAC signing) and G3 (claims ledger)
+  are Claude-only and intentionally NOT ported.
+- Host-agent onboarding template fragments under
+  `transfer_kit/templates/host_agents/` that teach host agents how to
+  invoke `transfer-kit pull`.
+- Scanner parameterised with `root=<path>` override so tests and the pull
+  pipeline can target non-default Claude-home locations without
+  environment manipulation.
+- Phase A freshness fixes on existing converters:
+  - `copilot.py`: per-skill `applyTo` now honoured from source
+    frontmatter (falls back to `'**'`).
+  - `gemini.py`: `scripts/`, `references/`, `assets/` subdirectories
+    preserved when the source skill uses the agent-foundry layout.
+- Idempotent re-pull: files with `<!-- tk:pull-managed-* -->` markers
+  merge only inside the block; content-hash conflict detection on
+  full-file replacements; `--force` / `--preserve` flags for
+  opt-in overwrite or conflict-sidecar behaviour.
+- Credential scrubber on git URLs: strips `user:pass@` and `ghp_…@`
+  userinfo before any subprocess or log statement, with a stderr
+  warning when credentials were present.
+- Tier-change semantics: narrowing `--tier` moves previously-present
+  tk-owned files to `<output>/.tk-pull-archive/<timestamp>/` by
+  default; `--no-archive` hard-deletes.
+
+### Planned — v0.3.0 Smart Export (parallel track)
+
+Design retained locally. Not blocked by and does not block the pull feature.
+
+- Two-layer export pipeline (deterministic + AI-assisted semantic translation).
+- Portability classification at export time.
+- Capability prober, analyzer, self-test, failure-memory.
+- `Agent` dataclass, `_scan_agents()`, Cursor converter.
+- `REGISTRY.md`, `transfer-flow.md`, `smart-export` CLI subcommand.
 
 ### Fixed (P0 critical bugs queued for v0.3.0)
 

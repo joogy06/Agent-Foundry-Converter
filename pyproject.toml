@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "transfer-kit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Migrate Claude Code config and convert to other IDEs"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -55,7 +55,12 @@ include = ["transfer_kit*"]
 exclude = ["tests*", "docs*"]
 
 [tool.setuptools.package-data]
-transfer_kit = ["py.typed"]
+transfer_kit = [
+    "py.typed",
+    "data/*.yaml",
+    "data/*.py",
+    "templates/host_agents/*.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

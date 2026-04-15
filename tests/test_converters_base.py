@@ -8,12 +8,21 @@ from transfer_kit.converters.base import (
 
 
 def test_tool_map_has_all_targets():
-    assert set(TOOL_MAP.keys()) == {"gemini", "copilot", "windsurf"}
+    assert set(TOOL_MAP.keys()) == {"gemini", "copilot", "copilot-cli", "windsurf"}
     for target, mapping in TOOL_MAP.items():
         assert "Read" in mapping
         assert "Bash" in mapping
         assert "WebSearch" in mapping, f"{target} missing WebSearch"
         assert "WebFetch" in mapping, f"{target} missing WebFetch"
+
+
+def test_copilot_cli_tool_map_preserves_bash():
+    """Copilot CLI has a native Bash; keep the Bash tool as-is (lowercase)."""
+    c = TOOL_MAP["copilot-cli"]
+    assert c["Bash"] == "bash"
+    assert c["Read"] == "read_file"
+    assert c["Grep"] == "grep"
+    assert c["Glob"] == "find"
 
 
 def test_gemini_tool_names_correct():

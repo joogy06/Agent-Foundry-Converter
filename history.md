@@ -1,5 +1,82 @@
 # Project History
 
+## 2026-04-15 — Agent-Foundry Pull (v0.3.0) — Implemented
+
+### bob executed the approved design end-to-end
+
+All 7 work packages landed in a single sequential execution (no agent-teams;
+the WPs are heavily sequential on shared files so parallel execution would
+have merge-conflicted). 203 tests pass (132 baseline preserved + 71 new).
+G1/G2 gates pass, ledger pinned to contract-map revision 1.
+
+**Delivered:**
+- `transfer_kit/models.py` — `MetaFile` transit dataclass; `ClaudeEnvironment.source_kind` + `meta_files` + `dependency_docs` fields (additive).
+- `transfer_kit/core/foundry_loader.py` — ingest-edge loader for agent-foundry layout.
+- `transfer_kit/core/scanner.py` — `root=` parameter override (backwards-compatible).
+- `transfer_kit/core/path_rewriter.py` — target-specific path rewrites + env-var shim injector + Windows shebang helper.
+- `transfer_kit/core/url_sanitizer.py` — credential scrubber.
+- `transfer_kit/core/compat.py` — compat matrix loader + `filter_env` with content-marker detection and tier filtering.
+- `transfer_kit/data/compat_matrix.yaml` — declared portability matrix.
+- `transfer_kit/data/gates_g2_shim.py` — host-portable G2 validator (G1/G3 stay Claude-only).
+- `transfer_kit/core/xref_resolver.py` — dangling-ref report + transitive include.
+- `transfer_kit/converters/copilot_cli.py` — GitHub Copilot CLI converter.
+- `transfer_kit/converters/base.py` — `convert_agents`/`convert_meta`/`convert_deps` hooks (default no-op).
+- `transfer_kit/converters/copilot.py` — Phase A fix: per-skill `applyTo` from frontmatter.
+- `transfer_kit/converters/gemini.py` — Phase A fix: `scripts`/`references`/`assets` subdirectory passthrough.
+- `transfer_kit/core/pull.py` + `transfer_kit/cli.py` `pull` subcommand + `interactive.py` menu entry.
+- `transfer_kit/templates/host_agents/{copilot,copilot_cli,gemini}.md` onboarding fragments.
+- 7 new test files: `test_foundry_loader.py`, `test_url_sanitizer.py`, `test_path_rewriter.py`, `test_compat_matrix.py`, `test_xref_resolver.py`, `test_converter_copilot_cli.py`, `test_pull.py`.
+- `tests/fixtures/agent_foundry/` — 4-skill / 2-agent / 2-meta synthetic mini-repo.
+
+**Verified success criteria (design spec §24):**
+- Happy path `transfer-kit pull /tmp/agent-foundry-recon --target copilot-cli --tier standard` completes in ~2s and writes 141 files.
+- Re-run is idempotent (0 files written second pass).
+- Minimal tier produces a narrower output (140 files) and surfaces dangling refs.
+- URL with PAT → credentials scrubbed + stderr warning.
+- Malformed URL → exit 2, no partial write.
+- `gates_g2_shim.py` exits 0 on a valid contract-map and 2 on a malformed one when run standalone outside a Claude host.
+- 132 baseline tests + 71 new tests = 203 passing.
+
+---
+
+## 2026-04-15 — Agent-Foundry Pull Design
+
+### Design spec completed
+- Design spec: `docs/plans/2026-04-15-agent-foundry-pull-design.md` (25 sections)
+- Forge cycle with Claude + Codex design exploration (Gemini unavailable this session due to GCP API permission; memory updated to route via MCP `ask-gemini` next session)
+- Four approaches explored (A minimal, B full dataclasses, C thin wrapper, D Codex source-compiler); triple-challenger review converged on hybrid C+D+A architecture.
+
+**Key decisions:**
+1. Hybrid C+D+A: parameterize Scanner(root=), new foundry_loader.py (ingest-edge isolation), reuse existing converter pipeline. No new Agent/Gate dataclasses (defer B).
+2. Gates: (a+G2) emit _meta/ as docs on non-Claude targets + port G2 schema validator as runtime. G1/G3 remain Claude+forge-only.
+3. New `copilot_cli.py` converter (separate file, not a variant flag).
+4. New utilities: path_rewriter.py, url_sanitizer.py, compat.py, xref_resolver.py, pull.py.
+5. compat_matrix.yaml declares per-artifact × per-target portability + EXCLUDE list.
+
+**7 work packages, ~1,630 LOC, 4-6 engineer days estimated.**
+
+**Explicit limitation (blind spot):** agent runtime behavior (Task tool, hooks, claims) does NOT port. Agents emit as degraded (prose-only) on non-Claude hosts. Documented in compat matrix.
+
+---
+
+## 2026-04-13 — Public Release to GitHub
+
+### Published to https://github.com/joogy06/Agent-Foundry-Converter
+- Full security review: scanned for secrets, PII, internal paths, credentials. Codebase clean.
+- Rewrote all 33 commit authors from internal identity to `TadasRemeikis <tadasremeikis@gmail.com>` via `git filter-repo --mailmap`.
+- Scrubbed internal path (`/mnt/data/dev04/transfer_kit`) from all blob contents in git history.
+- Stripped all `Co-Authored-By: Claude` trailers from commit messages.
+- Removed standalone scripts (`deploy_skills.py`, `folder_to_txt.py`) and internal design docs (`docs/superpowers/`) from repo and git history — repo now contains only the core transfer_kit package.
+- Replaced `REPLACE_ME` placeholders with `joogy06/Agent-Foundry-Converter`.
+- Added author + project URLs to `pyproject.toml`.
+- Bumped `cryptography>=46.0.5,<47` to resolve CVE-2026-26007 (both Dependabot alerts auto-closed).
+- Added `tasks.md` to `.gitignore` (internal project management).
+- 132 tests passing, 0 Dependabot alerts.
+
+**Note:** GitHub contributor cache may show a stale "claude" contributor for up to 24h after the force push. All Co-Authored-By lines are confirmed removed from history.
+
+---
+
 ## 2026-04-11 — Pre-Publication Audit (second pass)
 
 - Re-audited codebase for secrets, PII, and machine paths.

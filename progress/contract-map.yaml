@@ -1,0 +1,439 @@
+schema_version: "1.0.0"
+revision: 1
+design_doc: "docs/plans/2026-04-15-agent-foundry-pull-design.md"
+generated_at: "2026-04-15T13:40:00Z"
+generated_by: "component-contract-mapping@1.0.0"
+
+# Note on semantic types:
+# This is a developer-tool / build-system project. Most inputs and outputs
+# are filesystem paths, code content strings, or internal dataclass
+# aggregates. The v1 semantic type registry is domain-centric (email,
+# user_id, currency_amount, etc.), so most fields lean on:
+#   - `url_http` for the one true URL input (git source URL)
+#   - `semantic_type: technical` with closed-list technical values for
+#     system metadata (exit codes, flags, revision-like enums)
+#   - `kind: opaque` with `opaque_reason` + `opaque_fixture_source` for
+#     everything else (file content, ClaudeEnvironment aggregate, converter
+#     output dicts).
+# Per spec 7.3 this is a valid v1 configuration.
+
+types: {}
+
+components:
+
+  - id: url-sanitizer
+    purpose: "Strip credentials (PATs, user:pass) from git URLs before any clone or subprocess invocation."
+    owner_wp: WP-2
+    source_paths: ["transfer_kit/core/url_sanitizer.py"]
+    test_paths:
+      unit: "tests/test_url_sanitizer.py"
+      integration: "tests/test_pull.py"
+      flow: "tests/flow/test_pull_flow.py"
+    fixtures_path: "tests/fixtures/url_sanitizer/"
+    inputs:
+      - name: raw_url
+        semantic_type: url_http
+    outputs:
+      - name: sanitized_url
+        semantic_type: url_http
+      - name: had_credentials
+        semantic_type: technical
+        technical: _meta
+    dependencies: []
+    callers: [pull]
+    callees: []
+    integration_points:
+      - "Emits stderr warning when had_credentials is true (logged once per pull run)"
+      - "Uses urllib.parse only — no network calls, no filesystem access"
+    success_criteria:
+      - "Input 'https://ghp_abc@github.com/o/r' → sanitized 'https://github.com/o/r', had_credentials=true"
+      - "Input 'https://github.com/o/r' → sanitized identical, had_credentials=false"
+      - "Input not parseable as URL → raises ValueError with clear message"
+      - "Local path input (starts with / or ./ or contains no scheme) → passes through unchanged, had_credentials=false"
+    test_scenarios:
+      - id: TS-URL-001
+        name: "Strip PAT from HTTPS URL"
+        fixture_refs: [raw_url]
+        expected: "sanitized_url has no userinfo, had_credentials=true"
+      - id: TS-URL-002
+        name: "Pass through local path unchanged"
+        fixture_refs: [raw_url]
+        expected: "sanitized_url identical to input, had_credentials=false"
+      - id: TS-URL-003
+        name: "Reject malformed URL"
+        fixture_refs: [raw_url]
+        expected: "ValueError raised"
+    flow_entry_point: false
+    flow_terminal: false
+
+  - id: foundry-loader
+    purpose: "Walk an agent-foundry repo's layout (skills/, agents/, skills/_meta/, docs/dependencies/) and return a populated ClaudeEnvironment tagged source_kind='agent-foundry'."
+    owner_wp: WP-1
+    source_paths: ["transfer_kit/core/foundry_loader.py"]
+    test_paths:
+      unit: "tests/test_foundry_loader.py"
+      integration: "tests/test_pull.py"
+      flow: "tests/flow/test_pull_flow.py"
+    fixtures_path: "tests/fixtures/agent_foundry/"
+    inputs:
+      - name: root
+        semantic_type: technical
+        technical: internal_ref
+    outputs:
+      - name: env
+        kind: opaque
+        opaque_reason: "Internal ClaudeEnvironment dataclass aggregating skills, projects, meta_files, mcp_servers, env_vars. Too rich for a primitive/record; tested via round-trip fixtures."
+        opaque_fixture_source: "tests/fixtures/agent_foundry/expected_claude_env.json"
+    dependencies: []
+    callers: [pull]
+    callees: []
+    integration_points:
+      - "Reads skills/*/SKILL.md with frontmatter parsing"
+      - "Reads agents/*.md, tags each as Skill(source='agent') with kind='agent' in frontmatter"
+      - "Reads skills/_meta/*.{py,md,json} into MetaFile list with classification"
+      - "Reads docs/dependencies/*.md verbatim for passthrough by pull"
+      - "Does NOT flatten agents into ProjectConfig — preserves agent identity"
+    success_criteria:
+      - "Returns env.source_kind == 'agent-foundry'"
+      - "Skills populated from SKILL.md files under skills/* (excluding _meta/)"
+      - "Agents loaded as Skill(source='agent') with kind hint"
+      - "MetaFile list classified by filename (gates.py→gate-script, hard-rules-checklist.md→checklist, etc.)"
+      - "Missing skills/ dir returns env with skills=[] and does not raise"
+    test_scenarios:
+      - id: TS-FL-001
+        name: "Load minimal 4-skill / 2-agent / 2-meta fixture"
+        fixture_refs: [root]
+        expected: "env with 4 Skill(source='custom'), 2 Skill(source='agent'), 2 MetaFile"
+      - id: TS-FL-002
+        name: "Classify _meta files by kind"
+        fixture_refs: [root]
+        expected: "gates.py→gate-script, hard-rules-checklist.md→checklist, skill-families.json→families"
+      - id: TS-FL-003
+        name: "Missing skills directory returns empty"
+        fixture_refs: [root]
+        expected: "env with skills=[], no exception"
+    flow_entry_point: false
+    flow_terminal: false
+
+  - id: compat
+    purpose: "Load compat_matrix.yaml, filter the ClaudeEnvironment per target and tier, apply EXCLUDE list and claude_ecosystem_only content-marker detection, and return both a filtered env and a compat report."
+    owner_wp: WP-3
+    source_paths:
+      - "transfer_kit/core/compat.py"
+      - "transfer_kit/data/compat_matrix.yaml"
+    test_paths:
+      unit: "tests/test_compat_matrix.py"
+      integration: "tests/test_pull.py"
+      flow: "tests/flow/test_pull_flow.py"
+    fixtures_path: "tests/fixtures/compat/"
+    inputs:
+      - name: env
+        kind: opaque
+        opaque_reason: "ClaudeEnvironment dataclass produced by foundry-loader; passed through for filtering."
+        opaque_fixture_source: "tests/fixtures/agent_foundry/expected_claude_env.json"
+      - name: target
+        semantic_type: technical
+        technical: version
+      - name: tier
+        semantic_type: technical
+        technical: version
+    outputs:
+      - name: filtered_env
+        kind: opaque
+        opaque_reason: "Filtered ClaudeEnvironment with per-target/per-tier pruning applied."
+        opaque_fixture_source: "tests/fixtures/compat/expected_filtered_env.json"
+      - name: report
+        kind: opaque
+        opaque_reason: "Compatibility report with per-category counts and dropped-file list."
+        opaque_fixture_source: "tests/fixtures/compat/expected_reports/"
+    dependencies: [foundry-loader]
+    callers: [pull]
+    callees: []
+    integration_points:
+      - "Loads transfer_kit/data/compat_matrix.yaml at first call (cached thereafter)"
+      - "Synthesizes gates_g2_shim.py emission decision from meta.gates.py.g2-only rule"
+      - "Scans file content for claude_ecosystem_only_markers (Codex slash-cmd refs, Claude-only tool names)"
+    success_criteria:
+      - "target=copilot-cli + tier=standard drops meta.claims.py, meta.audit_spawn.py, meta.forge_reminder_hook.py"
+      - "target=copilot-cli marks gates.py as docs-only and schedules gates_g2_shim.py for runtime emission"
+      - "target=claude keeps all meta_files and does not schedule g2-only shim"
+      - "EXCLUDE patterns drop skill-families.json unconditionally"
+      - "Content containing '/codex:' marker classifies that file as claude-only"
+      - "Report counts portable/degraded/excluded/claude-only-dropped correctly"
+    test_scenarios:
+      - id: TS-CP-001
+        name: "Filter for copilot-cli tier=standard"
+        fixture_refs: [env, target, tier]
+        expected: "filtered_env drops claude-only meta files; report.gates_g2_shim_emit=true"
+      - id: TS-CP-002
+        name: "Filter for claude target keeps everything"
+        fixture_refs: [env, target, tier]
+        expected: "filtered_env equals input env; report.gates_g2_shim_emit=false"
+      - id: TS-CP-003
+        name: "Content marker forces claude-only classification"
+        fixture_refs: [env, target, tier]
+        expected: "file containing '/codex:adversarial-review' excluded from copilot-cli output"
+    flow_entry_point: false
+    flow_terminal: false
+
+  - id: xref-resolver
+    purpose: "Walk agent and skill bodies for name-based cross-references; emit a report of dangling refs given the current tier filter. Optionally supports transitive inclusion via caller flag."
+    owner_wp: WP-4
+    source_paths: ["transfer_kit/core/xref_resolver.py"]
+    test_paths:
+      unit: "tests/test_xref_resolver.py"
+      integration: "tests/test_pull.py"
+      flow: "tests/flow/test_pull_flow.py"
+    fixtures_path: "tests/fixtures/xref/"
+    inputs:
+      - name: env
+        kind: opaque
+        opaque_reason: "Filtered ClaudeEnvironment from compat component; scanned for cross-references."
+        opaque_fixture_source: "tests/fixtures/compat/expected_filtered_env.json"
+      - name: tier
+        semantic_type: technical
+        technical: version
+    outputs:
+      - name: report
+        kind: opaque
+        opaque_reason: "XRef diagnostic report with resolved refs, dangling refs, and per-agent breakdown."
+        opaque_fixture_source: "tests/fixtures/xref/expected_reports/"
+    dependencies: [compat]
+    callers: [pull]
+    callees: []
+    integration_points:
+      - "Regex-scans agent body for backtick-quoted skill name tokens matching known skill names"
+      - "Does NOT drop files on dangling — only reports (pull decides action based on --resolve-refs)"
+    success_criteria:
+      - "Agent bob.md referencing 'agent-teams' with agent-teams present → dangling=[]"
+      - "Agent bob.md referencing 'agent-teams' with tier dropping agent-teams → dangling has entry"
+      - "Report includes resolved count, dangling count, and per-agent breakdown"
+    test_scenarios:
+      - id: TS-XR-001
+        name: "Report dangling skill reference after tier drop"
+        fixture_refs: [env, tier]
+        expected: "report.dangling contains {agent: 'bob', ref: 'agent-teams'}"
+      - id: TS-XR-002
+        name: "No dangling when all refs resolve"
+        fixture_refs: [env, tier]
+        expected: "report.dangling == []"
+    flow_entry_point: false
+    flow_terminal: false
+
+  - id: path-rewriter
+    purpose: "Rewrite ~/.claude/skills/... and ~/.claude/agents/... path references inside content strings to target-specific paths. Handles shebang rewrites on Windows targets and injects TRANSFER_KIT_SKILLS_ROOT env-var shim prologue into _meta/gates.py for non-Claude targets."
+    owner_wp: WP-2
+    source_paths: ["transfer_kit/core/path_rewriter.py"]
+    test_paths:
+      unit: "tests/test_path_rewriter.py"
+      integration: "tests/test_pull.py"
+      flow: "tests/flow/test_pull_flow.py"
+    fixtures_path: "tests/fixtures/path_rewriter/"
+    inputs:
+      - name: content
+        kind: opaque
+        opaque_reason: "Arbitrary skill/agent/Python source content as string; scanned and rewritten."
+        opaque_fixture_source: "tests/fixtures/path_rewriter/inputs/"
+      - name: target
+        semantic_type: technical
+        technical: version
+      - name: workspace
+        semantic_type: technical
+        technical: internal_ref
+    outputs:
+      - name: rewritten_content
+        kind: opaque
+        opaque_reason: "Content string after path-rewrite rules applied; round-trip tested for idempotence."
+        opaque_fixture_source: "tests/fixtures/path_rewriter/expected_outputs/"
+    dependencies: []
+    callers: [copilot-cli-converter]
+    callees: []
+    integration_points:
+      - "Used by all converters (existing copilot.py, gemini.py, windsurf.py, and new copilot_cli.py) via base.py integration"
+      - "Target-specific rule table in module constant; deterministic ordering for idempotence"
+    success_criteria:
+      - "Input containing '~/.claude/skills/foo' + target=copilot-cli → '<workspace>/.github/instructions/foo'"
+      - "Re-running rewrite on already-rewritten content is a no-op (idempotent)"
+      - "gates.py content for non-Claude target gains env-var shim prologue that reads TRANSFER_KIT_SKILLS_ROOT"
+      - "target=claude returns content unchanged (identity)"
+      - "Shebang '#!/usr/bin/env python3' rewritten for Windows target to '.cmd' wrapper pattern"
+    test_scenarios:
+      - id: TS-PR-001
+        name: "Rewrite claude home path to copilot-cli target"
+        fixture_refs: [content, target, workspace]
+        expected: "rewritten_content has '/tmp/out/.github/instructions/foo' in place of '~/.claude/skills/foo'"
+      - id: TS-PR-002
+        name: "Env-var shim injected into gates.py for non-Claude target"
+        fixture_refs: [content, target, workspace]
+        expected: "rewritten_content contains 'TRANSFER_KIT_SKILLS_ROOT' prologue near module top"
+      - id: TS-PR-003
+        name: "Identity on claude target"
+        fixture_refs: [content, target, workspace]
+        expected: "rewritten_content == content"
+      - id: TS-PR-004
+        name: "Idempotent on second rewrite"
+        fixture_refs: [content, target, workspace]
+        expected: "rewrite(rewrite(x)) == rewrite(x)"
+    flow_entry_point: false
+    flow_terminal: false
+
+  - id: copilot-cli-converter
+    purpose: "Convert a filtered ClaudeEnvironment into a files dict representing the GitHub Copilot CLI output layout: AGENTS.md, .github/agents/, .github/instructions/, workspace/.mcp.json, docs/agent-foundry/_meta/, DEPENDENCIES.md, gates_g2_shim.py."
+    owner_wp: WP-5
+    source_paths:
+      - "transfer_kit/converters/copilot_cli.py"
+      - "transfer_kit/converters/base.py"
+    test_paths:
+      unit: "tests/test_converter_copilot_cli.py"
+      integration: "tests/test_pull.py"
+      flow: "tests/flow/test_pull_flow.py"
+    fixtures_path: "tests/fixtures/converter_copilot_cli/"
+    inputs:
+      - name: env
+        kind: opaque
+        opaque_reason: "Filtered ClaudeEnvironment from compat component; converted to target-specific file layout."
+        opaque_fixture_source: "tests/fixtures/compat/expected_filtered_env.json"
+    outputs:
+      - name: files
+        kind: opaque
+        opaque_reason: "Dict mapping output relative path (string) to file content (string); converter emission shape consumed by pull for final write."
+        opaque_fixture_source: "tests/fixtures/converter_copilot_cli/expected_output/"
+    dependencies: [compat, xref-resolver]
+    callers: [pull]
+    callees: [path-rewriter]
+    integration_points:
+      - "Emits AGENTS.md at repo root (native Copilot CLI load; merged with managed-block marker)"
+      - "Emits .github/agents/{name}.agent.md per Skill(source='agent') with Copilot-CLI-shaped frontmatter"
+      - "Emits .github/instructions/{name}.instructions.md per Skill(source!='agent') with applyTo frontmatter"
+      - "Emits workspace .mcp.json (default) or ~/.copilot/mcp-config.json (flag) for McpServers"
+      - "Emits docs/agent-foundry/_meta/ for non-Claude gates as reference docs with README banner"
+      - "Emits docs/agent-foundry/_meta/gates_g2_shim.py as runtime G2 validator for this target"
+      - "Renders DEPENDENCIES.md from env's source dependency docs + compat report"
+      - "Calls path-rewriter on ALL content before final emission"
+      - "Tool-rewrite map preserves 'Bash' as 'bash' (Copilot CLI has direct bash) — differs from VS Code Copilot converter"
+    success_criteria:
+      - "env with 4 skills + 2 agents + 2 meta files produces ≥10 output files in correct paths"
+      - "Agents land in .github/agents/*.agent.md, skills land in .github/instructions/*.instructions.md"
+      - "All ~/.claude/... references inside content are rewritten via path-rewriter"
+      - "AGENTS.md contains managed-block markers for idempotent re-run"
+      - "gates_g2_shim.py is emitted, full gates.py is NOT emitted as runtime (docs only)"
+    test_scenarios:
+      - id: TS-CC-001
+        name: "Convert minimal env to copilot-cli layout"
+        fixture_refs: [env]
+        expected: "files dict has keys: AGENTS.md, .github/agents/bob.agent.md, .github/instructions/*, docs/agent-foundry/_meta/gates_g2_shim.py, DEPENDENCIES.md"
+      - id: TS-CC-002
+        name: "Tool rewrite preserves Bash for CLI target"
+        fixture_refs: [env]
+        expected: "skill content referencing 'Bash' tool is rewritten to 'bash' (not stripped as for VS Code Copilot)"
+      - id: TS-CC-003
+        name: "Full gates.py is emitted as docs-only, G2 shim as runtime"
+        fixture_refs: [env]
+        expected: "docs/agent-foundry/_meta/gates.py present (reference), docs/agent-foundry/_meta/gates_g2_shim.py present (runtime)"
+    flow_entry_point: false
+    flow_terminal: true
+
+  - id: pull
+    purpose: "CLI entry point orchestrating the inverse flow. Sanitize URL, clone (or use local path), load foundry, apply compat filter, resolve cross-refs, dispatch to the target-specific converter, and write output idempotently with managed-block markers and content-hash conflict detection."
+    owner_wp: WP-6
+    source_paths:
+      - "transfer_kit/core/pull.py"
+      - "transfer_kit/cli.py"
+      - "transfer_kit/interactive.py"
+    test_paths:
+      unit: "tests/test_pull.py"
+      integration: "tests/test_pull.py"
+      flow: "tests/flow/test_pull_flow.py"
+    fixtures_path: "tests/fixtures/pull/"
+    inputs:
+      - name: source
+        semantic_type: url_http
+      - name: target
+        semantic_type: technical
+        technical: version
+      - name: tier
+        semantic_type: technical
+        technical: version
+      - name: output_dir
+        semantic_type: technical
+        technical: internal_ref
+      - name: dry_run
+        semantic_type: technical
+        technical: _meta
+    outputs:
+      - name: exit_code
+        semantic_type: technical
+        technical: _meta
+    dependencies: []
+    callers: []
+    callees:
+      - url-sanitizer
+      - foundry-loader
+      - compat
+      - xref-resolver
+      - copilot-cli-converter
+    integration_points:
+      - "Click subcommand `transfer-kit pull` with flags --target, --tier, --output, --ref, --resolve-refs, --force, --preserve, --dry-run, --no-archive"
+      - "Temp dir via tempfile.mkdtemp; git shallow clone with --config core.autocrlf=false; cleanup on exit including exception paths"
+      - "If source is local path (not a URL), uses in place and skips clone"
+      - "Writes managed-block markers <!-- tk:pull-managed-begin ... --> / <!-- tk:pull-managed-end -->"
+      - "Computes sha1 of each generated file; compares against existing for idempotent no-op"
+      - "On tier narrowing, archives dropped files to <output>/.tk-pull-archive/<timestamp>/ unless --no-archive"
+      - "Renders DEPENDENCIES.md from env's dependency docs + compat report"
+      - "Auto-detects target from env vars (COPILOT_CLI_VERSION → copilot-cli, GEMINI_CLI → gemini, VSCODE_PID → copilot) when --target omitted"
+    success_criteria:
+      - "Happy path: clone → load → filter → xref → convert → write completes, exit_code=0"
+      - "Re-run with identical inputs against same output dir is a no-op (0 files written)"
+      - "Malformed URL → exit_code=2, error printed to stderr, no partial write"
+      - "Tier narrow on re-run: files not in new tier moved to .tk-pull-archive, NOT deleted"
+      - "Tier widen on re-run: new files written, existing files untouched if hash matches, conflict report if hash differs"
+      - "--dry-run reports what would change without writing"
+      - "--force overwrites conflicts; --preserve writes .conflict sidecars and skips"
+    test_scenarios:
+      - id: TS-PL-001
+        name: "End-to-end pull happy path for copilot-cli target"
+        fixture_refs: [source, target, tier, output_dir, dry_run]
+        expected: "exit_code=0, output_dir contains AGENTS.md + .github/ + docs/agent-foundry/ + DEPENDENCIES.md"
+      - id: TS-PL-002
+        name: "Re-run is idempotent"
+        fixture_refs: [source, target, tier, output_dir, dry_run]
+        expected: "second run writes 0 files, exit_code=0"
+      - id: TS-PL-003
+        name: "Malformed URL fails cleanly"
+        fixture_refs: [source, target, tier, output_dir, dry_run]
+        expected: "exit_code=2, no files written"
+      - id: TS-PL-004
+        name: "Tier narrow archives dropped files"
+        fixture_refs: [source, target, tier, output_dir, dry_run]
+        expected: ".tk-pull-archive/<timestamp>/ exists with previously-present files"
+      - id: TS-PL-005
+        name: "Dry run writes nothing"
+        fixture_refs: [source, target, tier, output_dir, dry_run]
+        expected: "exit_code=0, no filesystem changes"
+    flow_entry_point: true
+    flow_terminal: false
+
+flows:
+
+  - id: FLOW-001
+    name: "End-to-end pull: agent-foundry repo → Copilot CLI output layout"
+    path:
+      - pull
+      - url-sanitizer
+      - foundry-loader
+      - compat
+      - xref-resolver
+      - copilot-cli-converter
+    entry_input:
+      component: pull
+      input: source
+      fixture_ref: "tests/fixtures/agent_foundry/"
+    terminal_output:
+      component: copilot-cli-converter
+      output: files
+    expected_outcome: "A complete Copilot CLI output layout — AGENTS.md, .github/agents/, .github/instructions/, docs/agent-foundry/_meta/gates_g2_shim.py, DEPENDENCIES.md — written idempotently to the output directory. path-rewriter is called by copilot-cli-converter to rewrite ~/.claude/ paths."
+    priority: critical
+
+flow_budget:
+  max_flows: 20
+  max_components_per_flow: 10

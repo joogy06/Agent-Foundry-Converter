@@ -23,11 +23,15 @@ class CopilotConverter(BaseConverter):
             body = strip_frontmatter(skill.content)
             body = rewrite_tool_references(body, self.target_name)
             description = skill.frontmatter.get("description", skill.name)
+            # Phase A fix (design spec §17): honour per-skill applyTo from the
+            # source frontmatter when present, falling back to ``'**'``. This
+            # lets agent-foundry skills scope themselves to specific globs.
+            apply_to = skill.frontmatter.get("applyTo", "**")
             frontmatter = (
                 "---\n"
                 f"name: {skill.name}\n"
                 f"description: {description}\n"
-                "applyTo: '**'\n"
+                f"applyTo: '{apply_to}'\n"
                 "---\n"
             )
             rel = f".github/instructions/{skill.name}.instructions.md"

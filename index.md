@@ -19,11 +19,27 @@
 | `core/sync.py` | Git repo + file copy sync |
 | `core/crypto.py` | Fernet + GPG encryption |
 | `core/comparator.py` | Config diff + merge engine |
+| `core/foundry_loader.py` | (planned v0.3.0) Compiles agent-foundry repo → ClaudeEnvironment |
+| `core/path_rewriter.py` | (planned v0.3.0) Generalized path rewriting utility |
+| `core/compat.py` | (planned v0.3.0) Loads compat_matrix.yaml, filters artifacts per target |
+| `core/xref_resolver.py` | (planned v0.3.0) Cross-reference integrity resolver |
+| `core/url_sanitizer.py` | (planned v0.3.0) Strips credentials from git URLs |
+| `core/pull.py` | (planned v0.3.0) Orchestrates pull flow |
 | `converters/__init__.py` | Converters subpackage init |
 | `converters/base.py` | ABC + tool name mapping |
 | `converters/gemini.py` | Gemini CLI converter |
-| `converters/copilot.py` | GitHub Copilot converter |
+| `converters/copilot.py` | GitHub Copilot (VS Code plugin) converter |
+| `converters/copilot_cli.py` | (planned v0.3.0) GitHub Copilot CLI converter |
 | `converters/windsurf.py` | Windsurf converter |
+| `data/compat_matrix.yaml` | (planned v0.3.0) Per-artifact × per-target portability declarations |
+| `data/gates_g2_shim.py` | (planned v0.3.0) G2-only schema validator for non-Claude targets |
+| `templates/host_agents/*.md` | (planned v0.3.0) Host-IDE AGENTS.md fragment templates |
+
+## Design Specs (`docs/plans/`)
+
+| File | Purpose |
+|------|---------|
+| `2026-04-15-agent-foundry-pull-design.md` | Agent-foundry pull & host-IDE convergence design (this release) |
 
 ## Tests (`tests/`)
 

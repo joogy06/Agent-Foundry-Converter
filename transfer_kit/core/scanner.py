@@ -52,14 +52,28 @@ _SECRET_PATTERNS = re.compile(
 
 
 class Scanner:
-    """Walk a Claude home directory and produce a :class:`ClaudeEnvironment`."""
+    """Walk a Claude home directory and produce a :class:`ClaudeEnvironment`.
+
+    .. note:: Scanner is responsible only for the canonical ``~/.claude/`` layout.
+        Foreign layouts (e.g. the ``joogy06/agent-foundry`` repo shape) are
+        handled by :class:`transfer_kit.core.foundry_loader.FoundryLoader`.
+        The ``root`` parameter accepted here is a *convenience alias* that
+        lets callers override ``claude_home`` without reaching into
+        ``platform_utils``; it does NOT change the layout semantics.
+    """
 
     def __init__(
         self,
         claude_home: Path | None = None,
         shell_profiles: list[Path] | None = None,
+        root: Path | None = None,
     ) -> None:
-        self.claude_home = claude_home or get_claude_home()
+        # `root` is an explicit override that takes precedence over
+        # `claude_home`. Both are kept because existing tests and callers
+        # pass `claude_home` positionally; `root` is the spec-§6 name used
+        # by new call sites (pull, tests). Behaviour when neither is set
+        # is unchanged from v0.2.0.
+        self.claude_home = root or claude_home or get_claude_home()
         self.shell_profiles = shell_profiles if shell_profiles is not None else get_shell_profile_paths()
 
     # ------------------------------------------------------------------

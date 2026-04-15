@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass
@@ -12,7 +13,7 @@ class Skill:
     path: Path
     content: str
     frontmatter: dict
-    source: str  # "custom" or "plugin:<plugin_name>"
+    source: str  # "custom" | "plugin:<plugin_name>" | "agent"
 
 
 @dataclass
@@ -61,6 +62,49 @@ class TeamConfig:
     config: dict
 
 
+# Closed-list classification for _meta files discovered by FoundryLoader.
+MetaFileKind = Literal[
+    "gate-script",   # gates.py, gates.sh
+    "checklist",     # hard-rules-checklist.md
+    "families",      # skill-families.json
+    "hook",          # forge_reminder_hook.py, pause_state.py
+    "claims",        # claims.py
+    "audit",         # audit_spawn.py
+    "trusted",       # trusted_runner.py
+    "scanner",       # scan_hard_rules.py
+    "other",
+]
+
+
+@dataclass
+class MetaFile:
+    """File under ``skills/_meta/`` — runtime scripts, checklists, JSON configs.
+
+    A lightweight transit dataclass, not a full Gate/Hook domain model. Just
+    enough metadata to carry the file through the pipeline and let the compat
+    matrix + path rewriter make decisions by name + kind.
+
+    Fields
+    ------
+    name :
+        Basename of the file (e.g. ``"gates.py"``).
+    path :
+        Absolute or source-relative path of the file.
+    content :
+        Raw file content as a string. Binary files are not expected under
+        ``_meta/`` — the loader reads with UTF-8; decoding errors raise.
+    kind :
+        Classification from :data:`MetaFileKind`. The FoundryLoader computes
+        this from the filename; consumers (compat, path_rewriter) may branch
+        on it.
+    """
+
+    name: str
+    path: Path
+    content: str
+    kind: str  # runtime-validated Literal[MetaFileKind]; str for backwards-compat tooling
+
+
 @dataclass
 class ClaudeEnvironment:
     skills: list[Skill]
@@ -75,3 +119,10 @@ class ClaudeEnvironment:
     keybindings: dict | None
     hooks: dict | None = None
     permissions: dict | None = None
+    # NEW in v0.3.0 — agent-foundry ingest support.
+    # Defaults preserve v0.2.0 behaviour for all existing Scanner call sites.
+    source_kind: str = "claude-home"  # "claude-home" | "agent-foundry"
+    meta_files: list[MetaFile] = field(default_factory=list)
+    # Raw dependency docs passthrough (agent-foundry only). Keys are basenames
+    # (README.md, agent-graph.md, ...); values are raw contents.
+    dependency_docs: dict = field(default_factory=dict)

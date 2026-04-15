@@ -15,6 +15,12 @@ from transfer_kit.models import ClaudeEnvironment, EnvVar, McpServer, ProjectCon
 class GeminiConverter(BaseConverter):
     target_name = "gemini"
 
+    # Resource subdirectories preserved from the source skill layout
+    # (design spec §17). The Claude-home scanner flattens skills to a single
+    # SKILL.md, but the agent-foundry layout keeps these sibling directories
+    # which we pass through verbatim.
+    _RESOURCE_SUBDIRS: tuple[str, ...] = ("scripts", "references", "assets")
+
     def convert_skills(self, skills: list[Skill]) -> dict[str, Any]:
         results: dict[str, Any] = {}
         for skill in skills:
@@ -29,6 +35,25 @@ class GeminiConverter(BaseConverter):
             )
             rel = f".gemini/skills/{skill.name}/SKILL.md"
             results[rel] = frontmatter + body
+
+            # Passthrough for scripts/, references/, assets/ if the skill was
+            # loaded from an agent-foundry-style layout where the SKILL.md
+            # sits inside a skill directory.
+            skill_dir = skill.path.parent
+            if skill_dir.is_dir() and skill_dir.name == skill.name:
+                for sub in self._RESOURCE_SUBDIRS:
+                    sub_path = skill_dir / sub
+                    if not sub_path.is_dir():
+                        continue
+                    for f in sub_path.rglob("*"):
+                        if not f.is_file():
+                            continue
+                        try:
+                            content = f.read_text(encoding="utf-8")
+                        except UnicodeDecodeError:
+                            continue
+                        rel_sub = f.relative_to(skill_dir).as_posix()
+                        results[f".gemini/skills/{skill.name}/{rel_sub}"] = content
         return results
 
     def convert_project_config(self, config: ProjectConfig) -> dict[str, Any]:

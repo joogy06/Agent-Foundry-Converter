@@ -1,0 +1,1 @@
+{"payload":{"forge_session_id":"5529f246-c533-4a24-a0a0-1e6944f862cf","map_hash":"f3f6ca242a1b7f41d9d08c567c969dc70712bf5db3561be7ebbaea5948f5dfca","map_revision":1,"signed_at":"2026-04-15T13:49:41Z"},"signature":"864d5e726948541cb9b9dd4f22a3e43997781f8689fa05aa7ce3f3d006dd682d"}

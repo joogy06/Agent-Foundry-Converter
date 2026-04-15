@@ -2,11 +2,12 @@
 
 > Python CLI tool for migrating Claude Code configuration between machines and converting it to other IDE formats.
 
-**Version:** 0.2.0
+**Version:** 0.3.0 (in progress — pull feature implemented, Smart Export parallel track deferred)
 **Entry point:** `transfer-kit` CLI / `python -m transfer_kit`
 **Python:** 3.10+
-**Tests:** 132 (pytest)
+**Tests:** 203 (pytest) — 132 baseline + 71 new for pull flow
 **CI:** `.github/workflows/ci.yml` — matrix: ubuntu/windows/macos x Python 3.10–3.13
+**Repo:** https://github.com/joogy06/Agent-Foundry-Converter (public, MIT)
 
 ---
 
@@ -14,35 +15,55 @@
 
 ```
 transfer_kit/
-├── cli.py                  ← Click CLI group: scan, export, import, convert, compare, sync, env, prereqs
+├── cli.py                  ← Click CLI group: scan, export, import, convert, pull, compare, sync, env, prereqs
 ├── interactive.py          ← Questionary menu-driven mode (no subcommand)
-├── models.py               ← Dataclasses: Skill, Plugin, McpServer, EnvVar, Plan, Team, etc.
+├── models.py               ← Dataclasses: Skill, Plugin, McpServer, EnvVar, Plan, Team, MetaFile, etc.
 ├── env.py                  ← Shell profile env var management (managed block)
 ├── platform_utils.py       ← OS detection, shell type, Claude home/project paths
 ├── prereqs.py              ← Prerequisite checker with per-OS install hints
 ├── core/
-│   ├── scanner.py          ← Discovers ~/.claude/ config (skills, plugins, MCP, projects, memory, hooks, permissions)
+│   ├── scanner.py          ← Discovers ~/.claude/ config (parameterised via root=)
 │   ├── exporter.py         ← Bundles selected items → .tar.gz with manifest
 │   ├── importer.py         ← Restores bundle → ~/.claude/ with conflict resolution
 │   ├── comparator.py       ← Side-by-side directory diff + interactive merge
 │   ├── crypto.py           ← Fernet + GPG encryption for sync secrets
-│   └── sync.py             ← Git repo push/pull + file copy sync
-└── converters/
-    ├── base.py             ← ABC + tool name mapping table (Claude→target rewriting)
-    ├── copilot.py          ← GitHub Copilot: .github/instructions/, mcp.json
-    ├── gemini.py           ← Gemini CLI: GEMINI.md, .gemini/skills/, settings.json
-    └── windsurf.py         ← Windsurf: .windsurf/rules/, mcp_config.json
+│   ├── sync.py             ← Git repo push/pull + file copy sync
+│   ├── foundry_loader.py   ← NEW: load joogy06/agent-foundry repo → ClaudeEnvironment (pull flow)
+│   ├── path_rewriter.py    ← NEW: ~/.claude/ path rewriting per target + env-var shim injector
+│   ├── url_sanitizer.py    ← NEW: strip credentials from git URLs
+│   ├── compat.py           ← NEW: load compat_matrix.yaml + filter env per target/tier
+│   ├── xref_resolver.py    ← NEW: report dangling cross-refs post-filter
+│   └── pull.py             ← NEW: orchestrate sanitise → clone → load → compat → xref → convert → write
+├── converters/
+│   ├── base.py             ← ABC + tool map + convert_agents/meta/deps hooks (default no-op)
+│   ├── copilot.py          ← GitHub Copilot VS Code (per-skill applyTo supported since v0.3.0)
+│   ├── copilot_cli.py      ← NEW: GitHub Copilot CLI (AGENTS.md + .github/agents/ + G2 shim)
+│   ├── gemini.py           ← Gemini CLI (resource subdir passthrough since v0.3.0)
+│   └── windsurf.py         ← Windsurf (unchanged)
+├── data/
+│   ├── compat_matrix.yaml  ← NEW: per-artifact × per-target portability declarations
+│   └── gates_g2_shim.py    ← NEW: host-portable G2 schema validator shipped to non-Claude targets
+└── templates/
+    └── host_agents/
+        ├── copilot.md      ← NEW: host-agent onboarding fragment for Copilot (VS Code)
+        ├── copilot_cli.md  ← NEW: host-agent onboarding fragment for Copilot CLI
+        └── gemini.md       ← NEW: host-agent onboarding fragment for Gemini CLI
 ```
 
 ## Data Flow
 
 ```
+Forward (export / convert):
 ~/.claude/ ──scanner──→ ScanResult ──exporter──→ .tar.gz bundle
                                           │
                                     importer ←── .tar.gz bundle
                                           │
                                     converters ──→ Copilot / Gemini / Windsurf output
 
+Inverse (pull, v0.3.0):
+git-url-or-path ──url_sanitizer──→ clone──→ foundry_loader──→ ClaudeEnvironment
+       → compat (matrix+tier filter) → xref_resolver → converter → path_rewriter → output dir
+       with idempotent managed-block write, .tk-pull-archive on tier narrow, DEPENDENCIES.md render.
 ```
 
 ## Integration Edges

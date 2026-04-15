@@ -317,6 +317,56 @@ def convert(ctx: click.Context, target: str, output: str | None, items: str) -> 
 
 
 # ---------------------------------------------------------------------------
+# pull — inverse flow: agent-foundry repo → host-IDE layout
+# ---------------------------------------------------------------------------
+
+
+@main.command(name="pull")
+@click.argument("source", type=str)
+@click.option("--target", type=click.Choice(["copilot", "copilot-cli", "gemini", "windsurf"]),
+              default=None, help="Target IDE layout. Auto-detected from env if omitted.")
+@click.option("--tier", type=click.Choice(["minimal", "standard", "full"]),
+              default="standard", help="Payload tier.")
+@click.option("-o", "--output", default="./pulled-foundry", help="Output directory.")
+@click.option("--ref", default=None, help="Git ref (branch/tag/sha) to check out.")
+@click.option("--resolve-refs", "resolve_refs_flag", is_flag=True,
+              help="Transitively include dependencies of kept skills/agents.")
+@click.option("--force", is_flag=True, help="Overwrite files even if content hashes differ.")
+@click.option("--preserve", is_flag=True, help="Skip overwrites; write .conflict sidecars.")
+@click.option("--no-archive", is_flag=True,
+              help="Hard-delete files dropped by a tier narrow instead of archiving them.")
+@click.pass_context
+def pull_cmd(ctx: click.Context, source: str, target: str | None, tier: str,
+             output: str, ref: str | None, resolve_refs_flag: bool,
+             force: bool, preserve: bool, no_archive: bool) -> None:
+    """Pull an agent-foundry payload into a host-IDE layout."""
+    from transfer_kit.core.pull import run_pull
+
+    dry_run = bool(ctx.obj.get("dry_run"))
+    verbose = bool(ctx.obj.get("verbose"))
+
+    result = run_pull(
+        source,
+        target,
+        tier=tier,
+        output=output,
+        ref=ref,
+        resolve_refs_flag=resolve_refs_flag,
+        force=force,
+        preserve=preserve,
+        dry_run=dry_run,
+        no_archive=no_archive,
+        verbose=verbose,
+    )
+
+    if result.exit_code == 0:
+        console.print(f"[green]{result.summary()}[/green]")
+    else:
+        console.print(f"[red]{result.summary()}[/red]")
+        raise SystemExit(result.exit_code)
+
+
+# ---------------------------------------------------------------------------
 # prereqs
 # ---------------------------------------------------------------------------
 

@@ -12,6 +12,7 @@ from transfer_kit.models import (
     ClaudeEnvironment,
     EnvVar,
     McpServer,
+    MetaFile,
     ProjectConfig,
     Skill,
 )
@@ -48,6 +49,21 @@ TOOL_MAP: dict[str, dict[str, str]] = {
         "NotebookEdit": "editNotebook",
         "TaskCreate": "todos",
         "TaskUpdate": "todos",
+    },
+    # GitHub Copilot CLI has a native Bash shell, so the Bash tool stays as-is
+    # (lowercase ``bash`` to match conventional command invocation). Agent maps
+    # to the CLI's ``codebase`` search verb. This table differs from the
+    # VS Code Copilot entry and justifies a separate converter (design D3).
+    "copilot-cli": {
+        "Read": "read_file",
+        "Edit": "write_file",
+        "Write": "write_file",
+        "Bash": "bash",
+        "Grep": "grep",
+        "Glob": "find",
+        "Agent": "codebase",
+        "WebSearch": "fetch",
+        "WebFetch": "fetch",
     },
     "windsurf": {
         "Read": "read_file",
@@ -128,20 +144,67 @@ class BaseConverter(ABC):
         """Return a mapping of relative file paths → file contents."""
         ...
 
+    # -- agent-foundry hooks (optional; default no-op) ----------------------
+
+    def convert_agents(self, agents: list[Skill]) -> dict[str, Any]:
+        """Emit files for ``Skill(source="agent")`` records.
+
+        Default implementation: no-op. Subclasses targeting hosts with a
+        native agent concept (Copilot CLI's ``.github/agents/`` directory,
+        for example) override this. Returning ``{}`` is safe: the claude-home
+        export path never populates the agent list, and other converters
+        that haven't been updated still emit correct skill output.
+        """
+        return {}
+
+    def convert_meta(self, meta_files: list[MetaFile]) -> dict[str, Any]:
+        """Emit files for :class:`MetaFile` records from ``skills/_meta/``.
+
+        Default implementation: no-op. Converters that ship the agent-foundry
+        gates runtime or G2 shim override this.
+        """
+        return {}
+
+    def convert_deps(self, dependency_docs: dict[str, str]) -> dict[str, Any]:
+        """Emit a rendered ``DEPENDENCIES.md`` (or equivalent) from passthrough docs.
+
+        Default implementation: no-op. The :mod:`transfer_kit.core.pull`
+        module may compose a final ``DEPENDENCIES.md`` from the converter's
+        output plus the compat report; see design spec §18.
+        """
+        return {}
+
     # -- orchestration helpers ----------------------------------------------
 
     def convert_all(
         self,
         items: ClaudeEnvironment | None = None,
     ) -> dict[str, Any]:
-        """Run every converter and merge the results into one dict."""
+        """Run every converter and merge the results into one dict.
+
+        The base ``convert_all`` calls the classic claude-home converters
+        (skills / project / mcp / env). Subclasses that want to emit
+        agent-foundry artifacts — agents, meta files, dependency docs —
+        override this and interleave the new hooks.
+        """
         env = items or self.env
         results: dict[str, Any] = {}
-        results.update(self.convert_skills(env.skills))
+        # Split source-by-source: skills with source!="agent" go to
+        # convert_skills, the rest to convert_agents. This keeps existing
+        # claude-home paths unchanged (all items have source="custom" there).
+        regular_skills = [s for s in env.skills if s.source != "agent"]
+        agent_skills = [s for s in env.skills if s.source == "agent"]
+        results.update(self.convert_skills(regular_skills))
+        if agent_skills:
+            results.update(self.convert_agents(agent_skills))
         for proj in env.projects:
             results.update(self.convert_project_config(proj))
         results.update(self.convert_mcp_servers(env.mcp_servers))
         results.update(self.convert_env_vars(env.env_vars))
+        if env.meta_files:
+            results.update(self.convert_meta(env.meta_files))
+        if env.dependency_docs:
+            results.update(self.convert_deps(env.dependency_docs))
         return results
 
     def write_output(self, output_dir: str | Path, results: dict[str, Any]) -> list[Path]:

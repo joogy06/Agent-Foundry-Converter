@@ -68,3 +68,8 @@ folder_to_txt.prefs.json
 transfer_kit_archive.txt
 *_archive.txt
 tasks.md
+
+# Forge/contract-driven-testing session artifacts (HMAC key + session id)
+# session.key is already caught by *.key above; explicit directory rule for clarity.
+.forge/
+.bob-checkpoint.md

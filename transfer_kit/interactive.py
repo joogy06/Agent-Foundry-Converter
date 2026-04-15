@@ -12,6 +12,7 @@ MENU_CHOICES = [
     "Export bundle",
     "Import bundle",
     "Convert to another IDE",
+    "Pull agent-foundry payload (inverse flow)",
     "Sync config",
     "Environment variables",
     "Check prerequisites",
@@ -59,6 +60,8 @@ def run_interactive(ctx: click.Context) -> None:
             _interactive_import(ctx)
         elif choice == "Convert to another IDE":
             _interactive_convert(ctx)
+        elif choice == "Pull agent-foundry payload (inverse flow)":
+            _interactive_pull(ctx)
         elif choice == "Sync config":
             _interactive_sync(ctx)
         elif choice == "Environment variables":
@@ -215,6 +218,51 @@ def _interactive_env(ctx: click.Context) -> None:
             ctx.invoke(env_remove, key=key)
     elif action == "apply":
         ctx.invoke(env_apply)
+
+
+def _interactive_pull(ctx: click.Context) -> None:
+    """Prompt the user for pull options and run the pull command."""
+    import questionary
+    from transfer_kit.cli import pull_cmd
+
+    source = questionary.text(
+        "Source (git URL or local path):",
+        default="https://github.com/joogy06/agent-foundry",
+    ).ask()
+    if not source:
+        return
+
+    target = questionary.select(
+        "Target IDE:",
+        choices=["copilot", "copilot-cli", "gemini", "windsurf"],
+    ).ask()
+    if not target:
+        return
+
+    tier = questionary.select(
+        "Tier:",
+        choices=["minimal", "standard", "full"],
+        default="standard",
+    ).ask()
+    if not tier:
+        return
+
+    output = questionary.text("Output directory:", default="./pulled-foundry").ask()
+    if not output:
+        return
+
+    ctx.invoke(
+        pull_cmd,
+        source=source,
+        target=target,
+        tier=tier,
+        output=output,
+        ref=None,
+        resolve_refs_flag=False,
+        force=False,
+        preserve=False,
+        no_archive=False,
+    )
 
 
 def _interactive_compare(ctx: click.Context) -> None:
