@@ -5,7 +5,27 @@ All notable changes to Transfer Kit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v0.3.0
+## [Unreleased]
+
+### Planned — Smart Export (parallel track)
+
+Design retained locally. Not blocked by and does not block the pull feature.
+
+- Two-layer export pipeline (deterministic + AI-assisted semantic translation).
+- Portability classification at export time.
+- Capability prober, analyzer, self-test, failure-memory.
+- `Agent` dataclass, `_scan_agents()`, Cursor converter.
+- `REGISTRY.md`, `transfer-flow.md`, `smart-export` CLI subcommand.
+
+### Queued P0 bug fixes (not yet shipped)
+
+- `env.py` shell-escape gap (`!` and newlines not escaped).
+- `crypto.py` GPG encryption missing `--batch` and recipient validation.
+- `sync.py` using `repo.index.add("*")` instead of explicit file staging.
+- `platform_utils.py` Windsurf Windows path.
+- `cli.py` dead `Panel` import.
+
+## [0.3.0] — 2026-04-15
 
 ### Added — Agent-Foundry Pull (inverse flow)
 
@@ -49,24 +69,20 @@ Design: `docs/plans/2026-04-15-agent-foundry-pull-design.md`.
   tk-owned files to `<output>/.tk-pull-archive/<timestamp>/` by
   default; `--no-archive` hard-deletes.
 
-### Planned — v0.3.0 Smart Export (parallel track)
+### Fixed
 
-Design retained locally. Not blocked by and does not block the pull feature.
+- `path_rewriter.py`: `re.sub` backslash-escape parsing of Windows paths
+  (`C:\Users\…` → `KeyError: '\\U'`) now bypassed via lambda replacement.
+- `test_env` assertions made platform-aware (PowerShell vs POSIX shell
+  output in the managed env block).
+- `test_importer` regex now accepts both `"Unsafe path"` (POSIX) and
+  `"Path escapes target directory"` (Windows) for the malicious-tar test.
 
-- Two-layer export pipeline (deterministic + AI-assisted semantic translation).
-- Portability classification at export time.
-- Capability prober, analyzer, self-test, failure-memory.
-- `Agent` dataclass, `_scan_agents()`, Cursor converter.
-- `REGISTRY.md`, `transfer-flow.md`, `smart-export` CLI subcommand.
+### Changed
 
-### Fixed (P0 critical bugs queued for v0.3.0)
-
-- `pyproject.toml` version mismatch (was 0.1.0, should be 0.2.0).
-- `env.py` shell-escape gap (`!` and newlines not escaped).
-- `crypto.py` GPG encryption missing `--batch` and recipient validation.
-- `sync.py` using `repo.index.add("*")` instead of explicit file staging.
-- `platform_utils.py` Windsurf Windows path.
-- `cli.py` dead `Panel` import.
+- Version bumped `0.2.0` → `0.3.0`.
+- 132 baseline tests preserved, 72 new tests added (204 total, all green
+  on Ubuntu/macOS/Windows × Python 3.10/3.11/3.12/3.13).
 
 ## [0.2.0] — 2026-03-24
 
@@ -118,6 +134,7 @@ Design retained locally. Not blocked by and does not block the pull feature.
 - QA review addressed 5 critical issues: path traversal, secret leakage,
   sync CLI correctness, manifest alignment.
 
-[Unreleased]: https://github.com/joogy06/Agent-Foundry-Converter/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/joogy06/Agent-Foundry-Converter/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/joogy06/Agent-Foundry-Converter/releases/tag/v0.3.0
 [0.2.0]: https://github.com/joogy06/Agent-Foundry-Converter/releases/tag/v0.2.0
 [0.1.0]: https://github.com/joogy06/Agent-Foundry-Converter/releases/tag/v0.1.0
