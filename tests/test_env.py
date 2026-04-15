@@ -16,11 +16,15 @@ def _expected_line(name: str, value: str) -> str:
 
 
 def test_render_block():
+    # render_block() is a platform-neutral classmethod that always emits
+    # POSIX `export` syntax regardless of host. Only `apply()` consults
+    # `get_shell_type()` to switch to PowerShell. Tests for apply() use
+    # `_expected_line()`; this one stays POSIX by design.
     block = EnvManager.render_block({"FOO": "bar", "BAZ": "qux"})
     assert "# -- transfer_kit managed start --" in block
     assert "# -- transfer_kit managed end --" in block
-    assert _expected_line("FOO", "bar") in block
-    assert _expected_line("BAZ", "qux") in block
+    assert 'export FOO="bar"' in block
+    assert 'export BAZ="qux"' in block
 
 
 def test_apply_creates_file(tmp_path):
