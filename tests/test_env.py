@@ -2,12 +2,25 @@
 from transfer_kit.env import EnvManager
 
 
+def _expected_line(name: str, value: str) -> str:
+    """Return the managed-block line that EnvManager emits for the current
+    platform's default shell. On Windows `get_shell_type()` returns
+    ``"powershell"`` and EnvManager writes ``$env:NAME = 'value'``;
+    on POSIX it writes ``export NAME="value"``. Tests must accept either.
+    """
+    from transfer_kit.platform_utils import get_shell_type
+
+    if get_shell_type() == "powershell":
+        return f"$env:{name} = '{value}'"
+    return f'export {name}="{value}"'
+
+
 def test_render_block():
     block = EnvManager.render_block({"FOO": "bar", "BAZ": "qux"})
     assert "# -- transfer_kit managed start --" in block
     assert "# -- transfer_kit managed end --" in block
-    assert 'export FOO="bar"' in block
-    assert 'export BAZ="qux"' in block
+    assert _expected_line("FOO", "bar") in block
+    assert _expected_line("BAZ", "qux") in block
 
 
 def test_apply_creates_file(tmp_path):
@@ -17,7 +30,7 @@ def test_apply_creates_file(tmp_path):
 
     assert profile.exists()
     text = profile.read_text()
-    assert 'export MY_VAR="hello"' in text
+    assert _expected_line("MY_VAR", "hello") in text
     assert "# -- transfer_kit managed start --" in text
 
 
@@ -30,8 +43,8 @@ def test_apply_updates_existing_block(tmp_path):
 
     text = profile.read_text()
     assert text.count("# -- transfer_kit managed start --") == 1
-    assert 'export A="2"' in text
-    assert 'export B="3"' in text
+    assert _expected_line("A", "2") in text
+    assert _expected_line("B", "3") in text
 
 
 def test_remove_block(tmp_path):

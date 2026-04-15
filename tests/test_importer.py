@@ -112,7 +112,12 @@ def test_importer_rejects_absolute_path_in_tar(tmp_path):
     from transfer_kit.core.importer import Importer
     importer = Importer(bundle)
     import pytest
-    with pytest.raises(ValueError, match="Unsafe path"):
+    # Rejection message differs by platform: on POSIX the tar member path
+    # "//etc/passwd" is flagged as absolute -> "Unsafe path"; on Windows
+    # "Path.is_absolute()" is False for that same string, so the importer
+    # falls through to the path-escape check -> "Path escapes target
+    # directory". Either rejection is correct.
+    with pytest.raises(ValueError, match=r"(Unsafe path|Path escapes target directory)"):
         importer.restore(tmp_path / "target")
 
 
